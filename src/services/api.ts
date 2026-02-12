@@ -1,5 +1,5 @@
 // API base URL - change this for production
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 // API client configuration
 class ApiClient {
