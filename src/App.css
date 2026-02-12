@@ -5,4 +5,78 @@
   flex-direction: column;
 }
 
+/* OSRS Wiki Theme Utility Classes */
+
+/* Wiki blue-grey borders and shadows */
+.wiki-border {
+  border: 2px solid #3a5a7a;
+}
+
+.wiki-shadow {
+  box-shadow: 0 4px 6px rgba(26, 26, 31, 0.3);
+}
+
+.wiki-hover {
+  transition: all 0.2s ease;
+}
+
+.wiki-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(58, 90, 122, 0.25);
+}
+
+/* Status indicators with OSRS colors */
+.status-active {
+  color: #6aa85a;
+  background-color: rgba(74, 122, 58, 0.15);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.status-pending {
+  color: #c8a86a;
+  background-color: rgba(154, 122, 58, 0.15);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.status-inactive {
+  color: #8d8d95;
+  background-color: rgba(141, 141, 149, 0.15);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* Wiki-style accent colors */
+.accent-primary {
+  color: #7aa8d8;
+}
+
+.accent-success {
+  color: #6aa85a;
+}
+
+.accent-warning {
+  color: #c8a86a;
+}
+
+.accent-danger {
+  color: #b85a5a;
+}
+
+/* Background variations */
+.bg-wiki-surface {
+  background-color: #25252b;
+}
+
+.bg-wiki-level1 {
+  background-color: #2d2d35;
+}
+
+.bg-wiki-level2 {
+  background-color: #35353d;
+}
 /* BingoBoard specific styles (not yet migrated) */

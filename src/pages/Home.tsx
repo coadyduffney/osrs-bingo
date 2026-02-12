@@ -404,9 +404,7 @@ function Home() {
                       fullWidth
                       variant={event.status === 'active' ? 'solid' : 'outlined'}
                     >
-                      {event.status === 'active'
-                        ? 'View & Join Teams'
-                        : 'View Event'}
+                      View Event
                     </Button>
                   </CardContent>
                 </Card>
