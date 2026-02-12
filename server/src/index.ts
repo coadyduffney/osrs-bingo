@@ -70,6 +70,15 @@ app.use('/api/tasks', taskRoutes);
 // Error handling
 app.use(errorHandler);
 
+const publicPath = path.join(__dirname, "../../public");
+
+app.use(express.static(publicPath));
+
+// Anything not handled by the API should return the React app
+app.get("*", (_req, res) => {
+  res.sendFile(path.join(publicPath, "index.html"));
+});
+
 httpServer.listen(port, () => {
   console.log(`🚀 Server is running on http://localhost:${port}`);
   console.log(`📝 API documentation: http://localhost:${port}/api/health`);
