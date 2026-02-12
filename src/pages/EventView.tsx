@@ -8,14 +8,17 @@ import {
 import BingoBoard from '../components/BingoBoard';
 import TeamManagement from '../components/TeamManagement';
 import ImageUpload from '../components/ImageUpload';
+import Leaderboard from '../components/Leaderboard';
 import {
   eventsApi,
   teamsApi,
   tasksApi,
+  authApi,
   Event,
   Team,
   Task,
   TaskCompletion,
+  User,
 } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
@@ -27,6 +30,7 @@ import Card from '@mui/joy/Card';
 import CardContent from '@mui/joy/CardContent';
 import Stack from '@mui/joy/Stack';
 import Chip from '@mui/joy/Chip';
+import Tooltip from '@mui/joy/Tooltip';
 import CircularProgress from '@mui/joy/CircularProgress';
 import Alert from '@mui/joy/Alert';
 import Tabs from '@mui/joy/Tabs';
@@ -54,6 +58,9 @@ function EventView() {
   const [event, setEvent] = useState<Event | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [teamMembers, setTeamMembers] = useState<Map<string, User[]>>(
+    new Map(),
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
@@ -144,6 +151,53 @@ function EventView() {
 
     fetchEventData();
   }, [id]);
+
+  // Fetch team members for leaderboard
+  useEffect(() => {
+    const fetchTeamMembers = async () => {
+      if (teams.length === 0) {
+        setTeamMembers(new Map());
+        return;
+      }
+
+      try {
+        // Collect all unique member IDs from all teams
+        const allMemberIds = new Set<string>();
+        teams.forEach((team) => {
+          team.memberIds.forEach((memberId) => allMemberIds.add(memberId));
+        });
+
+        // Fetch all users in one batch
+        const userIdsArray = Array.from(allMemberIds);
+        if (userIdsArray.length === 0) {
+          setTeamMembers(new Map());
+          return;
+        }
+
+        const usersResponse = await authApi.getUsersByIds(userIdsArray);
+        if (usersResponse.success) {
+          const usersById = new Map(
+            usersResponse.data.map((user) => [user.id, user]),
+          );
+
+          // Build Map<teamId, User[]>
+          const membersMap = new Map<string, User[]>();
+          teams.forEach((team) => {
+            const members = team.memberIds
+              .map((id) => usersById.get(id))
+              .filter((user): user is User => user !== undefined);
+            membersMap.set(team.id, members);
+          });
+
+          setTeamMembers(membersMap);
+        }
+      } catch (err) {
+        console.error('Failed to fetch team members:', err);
+      }
+    };
+
+    fetchTeamMembers();
+  }, [teams]);
 
   // Socket.IO real-time updates
   useEffect(() => {
@@ -633,6 +687,7 @@ function EventView() {
         <TabList>
           <Tab>Bingo Board</Tab>
           <Tab>Teams</Tab>
+          <Tab>Leaderboard</Tab>
         </TabList>
 
         {/* Bingo Board Tab */}
@@ -789,6 +844,15 @@ function EventView() {
                   )}
                 </Box>
               )}
+            </CardContent>
+          </Card>
+        </TabPanel>
+
+        {/* Leaderboard Tab */}
+        <TabPanel value={2} sx={{ p: 0, pt: 2 }}>
+          <Card>
+            <CardContent>
+              <Leaderboard teams={teams} members={teamMembers} />
             </CardContent>
           </Card>
         </TabPanel>
@@ -1072,13 +1136,29 @@ function EventView() {
                     {selectedTask.points === 1 ? 'point' : 'points'}
                   </Chip>
                   {selectedTask.completedByTeamIds.length > 0 && (
-                    <Chip color="success" variant="soft" startDecorator="✅">
-                      {selectedTask.completedByTeamIds.length}{' '}
-                      {selectedTask.completedByTeamIds.length === 1
-                        ? 'team'
-                        : 'teams'}{' '}
-                      completed
-                    </Chip>
+                    <Tooltip
+                      title={
+                        selectedTask.completedByTeamIds.length > 0
+                          ? `Completed by: ${selectedTask.completedByTeamIds
+                              .map(
+                                (teamId) =>
+                                  teams.find((t) => t.id === teamId)?.name,
+                              )
+                              .filter(Boolean)
+                              .join(', ')}`
+                          : ''
+                      }
+                      placement="top"
+                      arrow
+                    >
+                      <Chip color="success" variant="soft" startDecorator="✅">
+                        {selectedTask.completedByTeamIds.length}{' '}
+                        {selectedTask.completedByTeamIds.length === 1
+                          ? 'team'
+                          : 'teams'}{' '}
+                        completed
+                      </Chip>
+                    </Tooltip>
                   )}
                 </Stack>
 
