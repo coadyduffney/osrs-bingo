@@ -9,10 +9,6 @@ A full-featured web application for creating and managing competitive bingo-styl
 
 ## ✨ Features
 
-
-
-## ✨ Features
-
 ### 🔐 User Management
 - Secure JWT-based authentication
 - User profiles with avatar uploads
