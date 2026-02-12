@@ -5,17 +5,11 @@ import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { errorHandler } from './middleware/errorHandler.js';
 import authRoutes from './routes/auth.js';
-import eventRoutes from './routes/events.js';
-import teamRoutes from './routes/teams.js';
-import taskRoutes from './routes/tasks.js';
-
-// Get __dirname equivalent in ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import eventRoutes from './routes/events';
+import teamRoutes from './routes/teams';
+import taskRoutes from './routes/tasks';
 
 dotenv.config();
 
