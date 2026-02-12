@@ -1,0 +1,8 @@
+/* Legacy styles - will be removed as components migrate to Joy UI */
+.App {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* BingoBoard specific styles (not yet migrated) */

@@ -1,0 +1,184 @@
+import { Router, Request, Response } from 'express';
+import { z } from 'zod';
+import { ApiErrorClass, asyncHandler } from '../middleware/errorHandler.js';
+import { EventRepository } from '../repositories/index.js';
+import { authMiddleware } from '../middleware/auth.js';
+
+const router = Router();
+const eventRepo = new EventRepository();
+
+// Validation schemas
+const createEventSchema = z.object({
+  name: z.string().min(3).max(100),
+  description: z.string().max(500).optional(),
+  boardSize: z.enum(['5', '7', '9', '10']).transform((val) => Number(val) as 5 | 7 | 9 | 10)
+});
+
+// Get all events
+router.get('/', asyncHandler(async (_req: Request, res: Response) => {
+  const events = await eventRepo.findAll();
+
+  res.json({
+    success: true,
+    data: events,
+  });
+}));
+
+// Get events for current user (protected route)
+router.get('/my-events', authMiddleware, asyncHandler(async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const userEvents = await eventRepo.findByCreator(userId);
+  
+  res.json({
+    success: true,
+    data: userEvents
+  });
+}));
+
+// Get single event
+router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
+  const event = await eventRepo.findById(req.params.id);
+  
+  if (!event) {
+    throw new ApiErrorClass(404, 'Event not found');
+  }
+
+  res.json({
+    success: true,
+    data: event
+  });
+}));
+
+// Create event (protected route)
+router.post('/', authMiddleware, asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const { name, description, boardSize } = createEventSchema.parse(req.body);
+
+    const newEvent = await eventRepo.create({
+      name,
+      description: description || '',
+      boardSize,
+      creatorId: (req as any).user.id, // Use authenticated user's ID
+      status: 'draft',
+      settings: {
+        allowMultipleCompletions: false,
+        requireVerification: false
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      data: newEvent
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new ApiErrorClass(400, error.errors[0].message);
+    }
+    throw error;
+  }
+}));
+
+// Update event (protected route - creator only)
+router.put('/:id', authMiddleware, asyncHandler(async (req: Request, res: Response) => {
+  const event = await eventRepo.findById(req.params.id);
+  
+  if (!event) {
+    throw new ApiErrorClass(404, 'Event not found');
+  }
+
+  const currentUserId = (req as any).user.id;
+
+  // Only creator can update event
+  if (event.creatorId !== currentUserId) {
+    throw new ApiErrorClass(403, 'Only the event creator can update this event');
+  }
+
+  const updates = req.body;
+  await eventRepo.update(req.params.id, updates);
+  const updatedEvent = await eventRepo.findById(req.params.id);
+
+  res.json({
+    success: true,
+    data: updatedEvent
+  });
+}));
+
+// Delete event (protected route - creator only)
+router.delete('/:id', authMiddleware, asyncHandler(async (req: Request, res: Response) => {
+  const event = await eventRepo.findById(req.params.id);
+  
+  if (!event) {
+    throw new ApiErrorClass(404, 'Event not found');
+  }
+
+  const currentUserId = (req as any).user.id;
+
+  // Only creator can delete event
+  if (event.creatorId !== currentUserId) {
+    throw new ApiErrorClass(403, 'Only the event creator can delete this event');
+  }
+
+  await eventRepo.delete(req.params.id);
+
+  res.json({
+    success: true,
+    data: { message: 'Event deleted successfully' }
+  });
+}));
+
+// Get event by join code (protected route)
+router.post('/join', authMiddleware, asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const { joinCode } = req.body;
+
+    if (!joinCode) {
+      throw new ApiErrorClass(400, 'Join code is required');
+    }
+
+    // Find event by join code
+    const event = await eventRepo.findByJoinCode(joinCode);
+    
+    if (!event) {
+      throw new ApiErrorClass(404, 'Invalid join code');
+    }
+
+    res.json({
+      success: true,
+      data: event
+    });
+  } catch (error) {
+    throw error;
+  }
+}));
+
+// Publish event (change status from draft to active) - protected route
+router.post('/:id/publish', authMiddleware, asyncHandler(async (req: Request, res: Response) => {
+  const event = await eventRepo.findById(req.params.id);
+  
+  if (!event) {
+    throw new ApiErrorClass(404, 'Event not found');
+  }
+
+  const currentUserId = (req as any).user.id;
+
+  // Only creator can publish event
+  if (event.creatorId !== currentUserId) {
+    throw new ApiErrorClass(403, 'Only the event creator can publish this event');
+  }
+
+  // Can only publish draft events
+  if (event.status !== 'draft') {
+    throw new ApiErrorClass(400, `Cannot publish event with status: ${event.status}`);
+  }
+
+  // Update status to active
+  await eventRepo.update(req.params.id, { status: 'active' });
+  const updatedEvent = await eventRepo.findById(req.params.id);
+
+  res.json({
+    success: true,
+    data: updatedEvent
+  });
+}));
+
+export default router;
