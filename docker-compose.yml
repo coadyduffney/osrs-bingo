@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  osrs-bingo:
+    build: .
+    container_name: osrs-bingo
+    ports:
+      - "3010:3000"
+    env_file:
+      - .env
+    restart: unless-stopped
+
