@@ -41,10 +41,12 @@ const BingoBoard = memo(function BingoBoard({
 
     // Personal team completion status
     const yourTeamCompleted =
-      task && userTeamId ? task.completedByTeamIds.includes(userTeamId) : false;
+      task && userTeamId && task.completedByTeamIds
+        ? task.completedByTeamIds.includes(userTeamId)
+        : false;
 
     // Get other teams who completed this task (excluding user's team)
-    const otherTeamIds = task
+    const otherTeamIds = task && task.completedByTeamIds
       ? task.completedByTeamIds.filter((id) => id !== userTeamId)
       : [];
     
@@ -62,7 +64,7 @@ const BingoBoard = memo(function BingoBoard({
       completed: yourTeamCompleted,
       otherTeamsCount: otherTeamIds.length,
       otherTeamNames,
-      totalCompletions: task?.completedByTeamIds.length || 0,
+      totalCompletions: task?.completedByTeamIds?.length || 0,
       task: task,
     };
   }), [size, taskMap, teamMap, userTeamId]);
@@ -81,7 +83,7 @@ const BingoBoard = memo(function BingoBoard({
         gridTemplateRows: `repeat(${size}, 1fr)`,
         gap: 1,
         width: '100%',
-        maxWidth: '800px',
+        maxWidth: size >= 10 ? '1000px' : '800px',
         margin: '0 auto',
         p: 2,
       }}
@@ -101,33 +103,47 @@ const BingoBoard = memo(function BingoBoard({
             variant={cell.completed ? 'soft' : 'outlined'}
             color={cell.completed ? 'success' : 'neutral'}
             sx={{
-              aspectRatio: '1',
-              p: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center',
+              aspectRatio: '1 / 1',
+              width: '100%',
+              height: 0,
+              paddingBottom: '100%',
               position: 'relative',
               cursor: onCellClick ? 'pointer' : 'default',
               transition: 'all 0.2s',
+              overflow: 'hidden',
               '&:hover': onCellClick
                 ? {
                     transform: 'scale(1.05)',
                     borderColor: 'primary.500',
                     boxShadow: 'md',
+                    zIndex: 10,
                   }
                 : {},
             }}
             onClick={() => handleCellClick(cell)}
           >
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                p: 0.5,
+              }}
+            >
             {cell.completed && (
               <CheckCircleIcon
                 sx={{
                   position: 'absolute',
-                  top: 4,
-                  left: 4,
+                  top: 2,
+                  left: 2,
                   color: 'success.500',
-                  fontSize: '1.2rem',
+                  fontSize: size >= 10 ? '0.9rem' : '1.2rem',
                 }}
               />
             )}
@@ -137,10 +153,11 @@ const BingoBoard = memo(function BingoBoard({
                 color="primary"
                 sx={{
                   position: 'absolute',
-                  top: 4,
-                  right: 4,
-                  fontSize: '0.7rem',
-                  minHeight: '20px',
+                  top: 2,
+                  right: 2,
+                  fontSize: size >= 10 ? '0.55rem' : '0.7rem',
+                  minHeight: size >= 10 ? '16px' : '20px',
+                  padding: '0 4px',
                 }}
               >
                 {cell.points}pts
@@ -153,11 +170,12 @@ const BingoBoard = memo(function BingoBoard({
                 variant="soft"
                 sx={{
                   position: 'absolute',
-                  bottom: 4,
-                  right: 4,
-                  fontSize: '0.65rem',
-                  minHeight: '18px',
+                  bottom: 2,
+                  right: 2,
+                  fontSize: size >= 10 ? '0.5rem' : '0.65rem',
+                  minHeight: size >= 10 ? '14px' : '18px',
                   fontWeight: 600,
+                  padding: '0 4px',
                 }}
               >
                 {cell.otherTeamsCount} ✓
@@ -168,12 +186,15 @@ const BingoBoard = memo(function BingoBoard({
                 level="body-sm"
                 textAlign="center"
                 sx={{
-                  fontSize: { xs: '0.7rem', sm: '0.85rem' },
+                  fontSize: size >= 10 ? '0.55rem' : { xs: '0.7rem', sm: '0.85rem' },
+                  lineHeight: size >= 10 ? 1.2 : 1.4,
                   wordWrap: 'break-word',
                   overflow: 'hidden',
                   display: '-webkit-box',
-                  WebkitLineClamp: 3,
+                  WebkitLineClamp: size >= 10 ? 2 : 3,
                   WebkitBoxOrient: 'vertical',
+                  maxWidth: '100%',
+                  px: 0.5,
                 }}
               >
                 {cell.title}
@@ -181,12 +202,13 @@ const BingoBoard = memo(function BingoBoard({
             ) : (
               <AddIcon
                 sx={{
-                  fontSize: { xs: '2rem', sm: '2.5rem' },
+                  fontSize: size >= 10 ? '1.5rem' : { xs: '2rem', sm: '2.5rem' },
                   color: 'text.tertiary',
                   opacity: 0.3,
                 }}
               />
             )}
+            </Box>
           </Card>
         </Tooltip>
       ))}

@@ -119,9 +119,10 @@ async function seedTasks() {
       batch.set(taskRef, {
         eventId,
         title: task.title,
-        description: `Difficulty: ${task.difficulty}/10`,
-        points: task.difficulty * 10, // Points based on difficulty (10-100)
+        description: ``,
+        points: task.difficulty,
         position: task.taskNum - 1, // 0-indexed position
+        completedByTeamIds: [],
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       });
