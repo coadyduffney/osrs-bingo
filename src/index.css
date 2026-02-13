@@ -9,14 +9,14 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-image:
-      linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.95)),
-      url('/src/assets/images/background_1.jpg');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
-  /* Add subtle noise texture */
+  /* OSRS-style stone brick background */
+  background: 
+    linear-gradient(90deg, #3a3a3a 0px, transparent 1px),
+    linear-gradient(180deg, #3a3a3a 0px, transparent 1px),
+    linear-gradient(180deg, #2d2d2d 0%, #1a1a1a 100%);
+  background-size: 60px 60px, 60px 60px, 100% 100%;
+  background-position: 0 0, 0 0, 0 0;
+  background-attachment: fixed;
   position: relative;
 }
 
@@ -27,24 +27,31 @@ body::before {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: 
+  /* Stone texture with mortar lines and vignette */
+  background: 
     repeating-linear-gradient(
       0deg,
       transparent,
-      transparent 2px,
-      rgba(0, 0, 0, 0.03) 2px,
-      rgba(0, 0, 0, 0.03) 4px
+      transparent 59px,
+      rgba(0, 0, 0, 0.3) 59px,
+      rgba(0, 0, 0, 0.3) 60px
     ),
     repeating-linear-gradient(
       90deg,
       transparent,
-      transparent 2px,
-      rgba(0, 0, 0, 0.03) 2px,
-      rgba(0, 0, 0, 0.03) 4px
-    );
+      transparent 59px,
+      rgba(0, 0, 0, 0.3) 59px,
+      rgba(0, 0, 0, 0.3) 60px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(80, 70, 60, 0.1) 0px,
+      rgba(60, 50, 40, 0.1) 30px,
+      rgba(80, 70, 60, 0.1) 60px
+    ),
+    radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 0, 0.3) 100%);
   pointer-events: none;
-  z-index: 1;
-  opacity: 0.5;
+  z-index: 0;
 }
 
 #root {
