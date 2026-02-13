@@ -65,6 +65,7 @@ function AppContent() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          border: 'none',
           borderBottom: '2px solid',
           borderColor: 'primary.500',
           bgcolor: 'background.surface',
