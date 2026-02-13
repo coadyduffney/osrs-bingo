@@ -77,7 +77,7 @@ function EventView() {
   const [publishing, setPublishing] = useState(false);
   const [showCompleteTaskModal, setShowCompleteTaskModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [showFireworks, setShowFireworks] = useState(false);
+  const [fireworksTrigger, setFireworksTrigger] = useState(0);
   const [taskCompletions, setTaskCompletions] = useState<TaskCompletion[]>([]);
   const [loadingCompletions, setLoadingCompletions] = useState(false);
   const [completing, setCompleting] = useState(false);
@@ -239,7 +239,7 @@ function EventView() {
           color: 'success',
         });
         // Trigger fireworks celebration!
-        setShowFireworks(true);
+        setFireworksTrigger(prev => prev + 1);
       }
     };
 
@@ -1412,8 +1412,7 @@ function EventView() {
 
       {/* OSRS-style fireworks celebration */}
       <FireworksEffect 
-        trigger={showFireworks} 
-        onComplete={() => setShowFireworks(false)} 
+        trigger={fireworksTrigger} 
       />
     </Box>
   );

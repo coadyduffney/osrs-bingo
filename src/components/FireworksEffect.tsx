@@ -21,95 +21,116 @@ interface Particle {
 }
 
 interface FireworksEffectProps {
-  trigger: boolean;
-  onComplete?: () => void;
+  trigger: number;
 }
 
-const FireworksEffect: React.FC<FireworksEffectProps> = ({ trigger, onComplete }) => {
+const FireworksEffect: React.FC<FireworksEffectProps> = ({ trigger }) => {
   const [fireworks, setFireworks] = useState<Firework[]>([]);
 
   useEffect(() => {
-    if (!trigger) return;
+    if (trigger === 0) return;
 
-    // OSRS-style colors: red, blue, green, yellow, purple
-    const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
-    
-    const newFireworks: Firework[] = [];
-    
-    // Create 5-8 fireworks at different positions
-    const numFireworks = 5 + Math.floor(Math.random() * 4);
-    
-    for (let i = 0; i < numFireworks; i++) {
-      const x = 20 + Math.random() * 60; // Random position 20-80% across
-      const y = 20 + Math.random() * 40; // Random position 20-60% down
-      const color = colors[Math.floor(Math.random() * colors.length)];
+    let burstCount = 0;
+    const intervals: ReturnType<typeof setInterval>[] = [];
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+
+    const createBurst = () => {
+      // OSRS-style colors: red, blue, green, yellow, purple
+      const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
       
-      // Create particles in a burst
-      const particles: Particle[] = [];
-      const particleCount = 12 + Math.floor(Math.random() * 8); // 12-20 particles
+      const newFireworks: Firework[] = [];
       
-      for (let j = 0; j < particleCount; j++) {
-        const angle = (j / particleCount) * Math.PI * 2;
-        const speed = 1.5 + Math.random() * 2.5;
+      // Create 5-8 fireworks at different positions
+      const numFireworks = 5 + Math.floor(Math.random() * 4);
+      
+      for (let i = 0; i < numFireworks; i++) {
+        const x = 20 + Math.random() * 60; // Random position 20-80% across
+        const y = 20 + Math.random() * 40; // Random position 20-60% down
+        const color = colors[Math.floor(Math.random() * colors.length)];
         
-        particles.push({
-          id: j,
-          x: 0,
-          y: 0,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          life: 60,
-          maxLife: 60,
-          color: color,
+        // Create particles in a burst
+        const particles: Particle[] = [];
+        const particleCount = 12 + Math.floor(Math.random() * 8); // 12-20 particles
+        
+        for (let j = 0; j < particleCount; j++) {
+          const angle = (j / particleCount) * Math.PI * 2;
+          const speed = 1.5 + Math.random() * 2.5;
+          
+          particles.push({
+            id: j,
+            x: 0,
+            y: 0,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 60,
+            maxLife: 60,
+            color: color,
+          });
+        }
+        
+        newFireworks.push({
+          id: i,
+          x,
+          y,
+          color,
+          particles,
         });
       }
       
-      newFireworks.push({
-        id: i,
-        x,
-        y,
-        color,
-        particles,
-      });
-    }
+      return newFireworks;
+    };
+
+    const startAnimation = () => {
+      const newFireworks = createBurst();
+      setFireworks(newFireworks);
+      burstCount++;
+
+      // Animate particles
+      const animationInterval = setInterval(() => {
+        setFireworks(prev => {
+          const updated = prev.map(fw => ({
+            ...fw,
+            particles: fw.particles
+              .map(p => ({
+                ...p,
+                x: p.x + p.vx * 0.8,
+                y: p.y + p.vy * 0.8 + 0.08, // Slower gravity
+                vy: p.vy + 0.04, // Reduced gravity acceleration
+                life: p.life - 1,
+              }))
+              .filter(p => p.life > 0),
+          })).filter(fw => fw.particles.length > 0);
+          
+          // When burst fades out, trigger next burst (up to 5 total)
+          if (updated.length === 0) {
+            clearInterval(animationInterval);
+            if (burstCount < 5) {
+              const nextBurstTimeout = setTimeout(startAnimation, 300);
+              timeouts.push(nextBurstTimeout);
+            }
+          }
+          
+          return updated;
+        });
+      }, 16); // ~60fps
+      
+      intervals.push(animationInterval);
+    };
+
+    startAnimation();
     
-    setFireworks(newFireworks);
-    
-    // Animate particles
-    const animationInterval = setInterval(() => {
-      setFireworks(prev => {
-        const updated = prev.map(fw => ({
-          ...fw,
-          particles: fw.particles
-            .map(p => ({
-              ...p,
-              x: p.x + p.vx * 0.8,
-              y: p.y + p.vy * 0.8 + 0.08, // Slower gravity
-              vy: p.vy + 0.04, // Reduced gravity acceleration
-              life: p.life - 1,
-            }))
-            .filter(p => p.life > 0),
-        })).filter(fw => fw.particles.length > 0);
-        
-        if (updated.length === 0 && onComplete) {
-          onComplete();
-        }
-        
-        return updated;
-      });
-    }, 16); // ~60fps
-    
-    // Cleanup after animation
-    const timeout = setTimeout(() => {
-      clearInterval(animationInterval);
+    // Cleanup after full animation
+    const cleanupTimeout = setTimeout(() => {
+      intervals.forEach(interval => clearInterval(interval));
       setFireworks([]);
-    }, 2000);
+    }, 10000);
     
     return () => {
-      clearInterval(animationInterval);
-      clearTimeout(timeout);
+      intervals.forEach(interval => clearInterval(interval));
+      timeouts.forEach(timeout => clearTimeout(timeout));
+      clearTimeout(cleanupTimeout);
     };
-  }, [trigger, onComplete]);
+  }, [trigger]);
 
   if (fireworks.length === 0) return null;
 
