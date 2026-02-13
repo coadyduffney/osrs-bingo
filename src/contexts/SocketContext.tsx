@@ -27,7 +27,9 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
   useEffect(() => {
     // Connect to Socket.IO server
-    const socketInstance = io("/", {
+    // In development, connect to backend server; in production, use relative path
+    const serverUrl = import.meta.env.VITE_API_URL || '/';
+    const socketInstance = io(serverUrl, {
       withCredentials: true,
     });
 
