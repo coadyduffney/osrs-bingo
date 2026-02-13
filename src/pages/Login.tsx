@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Box from '@mui/joy/Box';
@@ -9,7 +9,7 @@ import Input from '@mui/joy/Input';
 import Stack from '@mui/joy/Stack';
 import Checkbox from '@mui/joy/Checkbox';
 
-function Login() {
+const Login = memo(function Login() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -21,7 +21,7 @@ function Login() {
   const { login, register } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -38,7 +38,28 @@ function Login() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isRegistering, username, email, password, login, register, navigate]);
+
+  const handleToggleMode = useCallback(() => {
+    setIsRegistering(!isRegistering);
+    setError('');
+  }, [isRegistering]);
+
+  const handleUsernameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setUsername(e.target.value);
+  }, []);
+
+  const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+  }, []);
+
+  const handlePasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value);
+  }, []);
+
+  const handleRememberMeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setRememberMe(e.target.checked);
+  }, []);
 
   return (
     <Box
@@ -302,7 +323,7 @@ function Login() {
                 </Typography>
                 <Input
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={handleUsernameChange}
                   disabled={loading}
                   sx={{
                     background: 'linear-gradient(145deg, #1a1a1a 0%, #0a0a0a 100%)',
@@ -337,7 +358,7 @@ function Login() {
                   <Input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={handleEmailChange}
                     disabled={loading}
                     sx={{
                       background: 'linear-gradient(145deg, #1a1a1a 0%, #0a0a0a 100%)',
@@ -372,7 +393,7 @@ function Login() {
                 <Input
                   type="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={handlePasswordChange}
                   disabled={loading}
                   sx={{
                     background: 'linear-gradient(145deg, #1a1a1a 0%, #0a0a0a 100%)',
@@ -394,7 +415,7 @@ function Login() {
                 <Checkbox
                   label="Remember username"
                   checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
+                  onChange={handleRememberMeChange}
                   disabled={loading}
                   sx={{
                     color: '#d4a574',
@@ -449,10 +470,7 @@ function Login() {
                 </Typography>
                 <Button
                   variant="plain"
-                  onClick={() => {
-                    setIsRegistering(!isRegistering);
-                    setError('');
-                  }}
+                  onClick={handleToggleMode}
                   disabled={loading}
                   sx={{
                     mt: 0.5,
@@ -475,6 +493,6 @@ function Login() {
       </Box>
     </Box>
   );
-}
+});
 
 export default Login;
