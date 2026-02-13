@@ -7,21 +7,35 @@ import CssBaseline from '@mui/joy/CssBaseline';
 import { SocketProvider } from './contexts/SocketContext.tsx';
 
 const theme = extendTheme({
+  fontFamily: {
+    body: '"Roboto", "Segoe UI", sans-serif',
+    display: '"Roboto", "Segoe UI", sans-serif',
+  },
   colorSchemes: {
     dark: {
       palette: {
         primary: {
-          solidBg: '#3a5a7a',
-          solidHoverBg: '#4a6a8a',
-          solidActiveBg: '#2a4a6a',
-          outlinedBorder: '#3a5a7a',
-          outlinedColor: '#5a8ab8',
-          outlinedHoverBg: 'rgba(58, 90, 122, 0.12)',
-          softColor: '#7aa8d8',
-          softBg: 'rgba(58, 90, 122, 0.16)',
-          softHoverBg: 'rgba(58, 90, 122, 0.24)',
-          plainColor: '#7aa8d8',
-          plainHoverBg: 'rgba(58, 90, 122, 0.12)',
+          50: '#e8ecef',
+          100: '#c5d0d7',
+          200: '#9fb1bd',
+          300: '#7892a3',
+          400: '#5b7a8f',
+          500: '#3d5a6b',
+          600: '#375263',
+          700: '#2f4655',
+          800: '#273a48',
+          900: '#1a282f',
+          solidBg: '#3d5a6b',
+          solidHoverBg: '#4a6a7d',
+          solidActiveBg: '#2f4655',
+          outlinedBorder: '#3d5a6b',
+          outlinedColor: '#5a7a8d',
+          outlinedHoverBg: 'rgba(61, 90, 107, 0.08)',
+          softColor: '#6a8a9d',
+          softBg: 'rgba(61, 90, 107, 0.16)',
+          softHoverBg: 'rgba(61, 90, 107, 0.24)',
+          plainColor: '#5a7a8d',
+          plainHoverBg: 'rgba(61, 90, 107, 0.08)',
         },
       },
     },
