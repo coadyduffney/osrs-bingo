@@ -6,6 +6,7 @@ import Typography from '@mui/joy/Typography';
 import Chip from '@mui/joy/Chip';
 import Tooltip from '@mui/joy/Tooltip';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import AddIcon from '@mui/icons-material/Add';
 
 interface BingoBoardProps {
   size: number;
@@ -35,7 +36,7 @@ const BingoBoard = memo(function BingoBoard({
   );
 
   // Generate cells for all positions
-  const cells = Array.from({ length: size * size }, (_, i) => {
+  const cells = useMemo(() => Array.from({ length: size * size }, (_, i) => {
     const task = taskMap.get(i);
 
     // Personal team completion status
@@ -55,7 +56,7 @@ const BingoBoard = memo(function BingoBoard({
     return {
       position: i,
       id: task?.id || `empty-${i}`,
-      title: task?.title || `Task ${i + 1}`,
+      title: task?.title || '',
       description: task?.description || '',
       points: task?.points || 0,
       completed: yourTeamCompleted,
@@ -162,20 +163,30 @@ const BingoBoard = memo(function BingoBoard({
                 {cell.otherTeamsCount} ✓
               </Chip>
             )}
-            <Typography
-              level="body-sm"
-              textAlign="center"
-              sx={{
-                fontSize: { xs: '0.7rem', sm: '0.85rem' },
-                wordWrap: 'break-word',
-                overflow: 'hidden',
-                display: '-webkit-box',
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: 'vertical',
-              }}
-            >
-              {cell.title}
-            </Typography>
+            {cell.title ? (
+              <Typography
+                level="body-sm"
+                textAlign="center"
+                sx={{
+                  fontSize: { xs: '0.7rem', sm: '0.85rem' },
+                  wordWrap: 'break-word',
+                  overflow: 'hidden',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                }}
+              >
+                {cell.title}
+              </Typography>
+            ) : (
+              <AddIcon
+                sx={{
+                  fontSize: { xs: '2rem', sm: '2.5rem' },
+                  color: 'text.tertiary',
+                  opacity: 0.3,
+                }}
+              />
+            )}
           </Card>
         </Tooltip>
       ))}

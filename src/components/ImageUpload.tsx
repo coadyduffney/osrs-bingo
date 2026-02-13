@@ -68,7 +68,7 @@ const ImageUpload = memo(function ImageUpload({
 
   const handleClick = useCallback(() => {
     fileInputRef.current?.click();
-  };
+  }, []);
 
   const displayPreview = previewUrl || localPreview;
   const isUploading = uploadProgress !== undefined && uploadProgress < 100;
@@ -170,7 +170,5 @@ const ImageUpload = memo(function ImageUpload({
     </Box>
   );
 });
-
-export default ImageUpload;);
 
 export default ImageUpload;
