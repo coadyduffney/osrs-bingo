@@ -42,8 +42,6 @@ import FormControl from '@mui/joy/FormControl';
 import FormLabel from '@mui/joy/FormLabel';
 import Input from '@mui/joy/Input';
 import Textarea from '@mui/joy/Textarea';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import CheckIcon from '@mui/icons-material/Check';
 import ImageIcon from '@mui/icons-material/Image';
 import Modal from '@mui/joy/Modal';
 import ModalDialog from '@mui/joy/ModalDialog';
@@ -72,7 +70,6 @@ function EventView() {
   const [deletingTask, setDeletingTask] = useState(false);
   const [showWelcomeAlert, setShowWelcomeAlert] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [copiedCode, setCopiedCode] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [showCompleteTaskModal, setShowCompleteTaskModal] = useState(false);
@@ -359,16 +356,6 @@ function EventView() {
       setDeleting(false);
     }
   };
-
-  const handleCopyCode = useCallback(async (code: string) => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopiedCode(true);
-      setTimeout(() => setCopiedCode(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy code:', err);
-    }
-  }, []);
 
   const handlePublishEvent = async () => {
     if (!id || !event) return;
@@ -679,38 +666,6 @@ function EventView() {
                   This event is in draft mode and only visible to you. Click
                   "Publish Event" to make it available on the home page for
                   everyone to discover and join.
-                </Typography>
-              </Stack>
-            </Alert>
-          )}
-
-          {/* Event Join Code */}
-          {isEventCreator && (
-            <Alert variant="soft" color="success" sx={{ mt: 2 }}>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Typography level="body-sm" fontWeight="bold">
-                  Event Join Code:
-                </Typography>
-                <Chip
-                  color="success"
-                  variant="solid"
-                  size="lg"
-                  onClick={() => handleCopyCode(event.joinCode)}
-                  sx={{
-                    cursor: 'pointer',
-                    '&:hover': {
-                      transform: 'scale(1.05)',
-                      transition: 'transform 0.2s',
-                    },
-                  }}
-                  endDecorator={
-                    copiedCode ? <CheckIcon /> : <ContentCopyIcon />
-                  }
-                >
-                  {event.joinCode}
-                </Chip>
-                <Typography level="body-sm" sx={{ color: 'text.secondary' }}>
-                  {copiedCode ? 'Copied!' : 'Click to copy'}
                 </Typography>
               </Stack>
             </Alert>

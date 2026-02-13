@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import { eventsApi, Event } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import Box from '@mui/joy/Box';
@@ -12,9 +12,7 @@ import Chip from '@mui/joy/Chip';
 import CircularProgress from '@mui/joy/CircularProgress';
 import Alert from '@mui/joy/Alert';
 import FormControl from '@mui/joy/FormControl';
-import FormLabel from '@mui/joy/FormLabel';
 import Input from '@mui/joy/Input';
-import Sheet from '@mui/joy/Sheet';
 import Select from '@mui/joy/Select';
 import Option from '@mui/joy/Option';
 import SearchIcon from '@mui/icons-material/Search';
@@ -24,13 +22,9 @@ function Home() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showJoinWithCode, setShowJoinWithCode] = useState(false);
-  const [joinCode, setJoinCode] = useState('');
-  const [joiningEvent, setJoiningEvent] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name'>('newest');
   const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -67,29 +61,6 @@ function Home() {
         return 'neutral';
     }
   };
-
-  const handleJoinWithCode = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!joinCode.trim() || !isAuthenticated) return;
-
-    setError('');
-    setJoiningEvent(true);
-
-    try {
-      const response = await eventsApi.joinWithCode(joinCode.toUpperCase());
-
-      if (response.success) {
-        // Navigate to the found event with a success indicator
-        navigate(`/event/${response.data.id}`, {
-          state: { joinedViaCode: true, eventName: response.data.name },
-        });
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid event code');
-    } finally {
-      setJoiningEvent(false);
-    }
-  }, [joinCode, isAuthenticated, navigate]);
 
   // Filter and sort events (memoized)
   const filteredAndSortedEvents = useMemo(() => events
@@ -141,20 +112,9 @@ function Home() {
               : 'Browse active bingo events below and login to join a team! Compete with others in fun OSRS challenges.'}
           </Typography>
           {isAuthenticated ? (
-            <Stack direction="row" spacing={2}>
-              <Button component={RouterLink} to="/create" size="lg">
-                Create New Event
-              </Button>
-              {!showJoinWithCode && (
-                <Button
-                  onClick={() => setShowJoinWithCode(true)}
-                  size="lg"
-                  variant="outlined"
-                >
-                  Browse by Code
-                </Button>
-              )}
-            </Stack>
+            <Button component={RouterLink} to="/create" size="lg">
+              Create New Event
+            </Button>
           ) : (
             <Stack direction="row" spacing={2}>
               <Button component={RouterLink} to="/login" size="lg">
@@ -172,81 +132,6 @@ function Home() {
           )}
         </CardContent>
       </Card>
-
-      {showJoinWithCode && isAuthenticated && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Sheet
-              variant="outlined"
-              sx={{
-                p: 2,
-                borderRadius: 'sm',
-              }}
-            >
-              <form onSubmit={handleJoinWithCode}>
-                <Stack spacing={2}>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Typography level="title-lg">Find Event by Code</Typography>
-                    <Button
-                      onClick={() => {
-                        setShowJoinWithCode(false);
-                        setJoinCode('');
-                        setError('');
-                      }}
-                      size="sm"
-                      variant="plain"
-                    >
-                      Cancel
-                    </Button>
-                  </Box>
-                  <Typography level="body-sm" sx={{ color: 'text.secondary' }}>
-                    Enter an event code to view the event. You'll need to join
-                    or create a team to participate.
-                  </Typography>
-                  <FormControl required>
-                    <FormLabel>Event Code</FormLabel>
-                    <Input
-                      value={joinCode}
-                      onChange={(e) => {
-                        const val = e.target.value.toUpperCase().slice(0, 6);
-                        setJoinCode(val);
-                      }}
-                      placeholder="Enter 6-character code"
-                      slotProps={{
-                        input: {
-                          style: {
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.1em',
-                            fontSize: '1.1em',
-                          },
-                        },
-                      }}
-                    />
-                  </FormControl>
-                  {error && (
-                    <Alert color="danger" variant="soft" size="sm">
-                      {error}
-                    </Alert>
-                  )}
-                  <Button
-                    type="submit"
-                    loading={joiningEvent}
-                    disabled={joinCode.length !== 6}
-                  >
-                    Find Event
-                  </Button>
-                </Stack>
-              </form>
-            </Sheet>
-          </CardContent>
-        </Card>
-      )}
 
       <Card>
         <CardContent>
