@@ -11,6 +11,78 @@ const theme = extendTheme({
     body: '"Roboto", "Segoe UI", sans-serif',
     display: '"Roboto", "Segoe UI", sans-serif',
   },
+  components: {
+    JoyCard: {
+      styleOverrides: {
+        root: {
+          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+          border: '2px solid rgba(255, 255, 255, 0.08)',
+          backgroundImage: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.02), transparent)',
+          transition: 'all 0.2s ease',
+          '&:hover': {
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
+            transform: 'translateY(-1px)',
+          },
+        },
+      },
+    },
+    JoySheet: {
+      styleOverrides: {
+        root: {
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          backgroundImage: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.02), transparent)',
+        },
+      },
+    },
+    JoyButton: {
+      styleOverrides: {
+        root: {
+          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+          transition: 'all 0.15s ease',
+          textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
+          '&:hover': {
+            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
+            transform: 'translateY(-1px)',
+          },
+          '&:active': {
+            boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.3)',
+            transform: 'translateY(0)',
+          },
+        },
+      },
+    },
+    JoyInput: {
+      styleOverrides: {
+        root: {
+          boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.2)',
+          border: '2px solid rgba(255, 255, 255, 0.08)',
+          '&:focus-within': {
+            boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 2px rgba(61, 90, 107, 0.3)',
+          },
+        },
+      },
+    },
+    JoyTextarea: {
+      styleOverrides: {
+        root: {
+          boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.2)',
+          border: '2px solid rgba(255, 255, 255, 0.08)',
+          '&:focus-within': {
+            boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 2px rgba(61, 90, 107, 0.3)',
+          },
+        },
+      },
+    },
+    JoyChip: {
+      styleOverrides: {
+        root: {
+          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+        },
+      },
+    },
+  },
   colorSchemes: {
     dark: {
       palette: {
