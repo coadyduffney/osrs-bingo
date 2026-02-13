@@ -97,6 +97,7 @@ function EventView() {
     description: '',
     points: 1,
   });
+  const [taskFormError, setTaskFormError] = useState('');
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -264,6 +265,17 @@ function EventView() {
     e.preventDefault();
     if (!id || selectedPosition === null) return;
 
+    // Client-side validation
+    setTaskFormError('');
+    if (taskForm.title.trim().length < 3) {
+      setTaskFormError('Task title must be at least 3 characters');
+      return;
+    }
+    if (taskForm.title.length > 100) {
+      setTaskFormError('Task title must be 100 characters or less');
+      return;
+    }
+
     try {
       setSubmitting(true);
 
@@ -285,6 +297,12 @@ function EventView() {
           setSelectedPosition(null);
           setIsEditingTask(false);
           setTaskToEdit(null);
+          setTaskFormError('');
+          setSnackbar({
+            open: true,
+            message: 'Task updated successfully',
+            color: 'success',
+          });
         }
       } else {
         // Create new task
@@ -305,10 +323,23 @@ function EventView() {
           setShowAddTaskModal(false);
           setTaskForm({ title: '', description: '', points: 1 });
           setSelectedPosition(null);
+          setTaskFormError('');
+          setSnackbar({
+            open: true,
+            message: 'Task created successfully',
+            color: 'success',
+          });
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to save task:', err);
+      const errorMessage = err?.response?.data?.error || err?.message || 'Failed to save task';
+      setTaskFormError(errorMessage);
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        color: 'danger',
+      });
     } finally {
       setSubmitting(false);
     }
@@ -870,6 +901,7 @@ function EventView() {
           setShowAddTaskModal(false);
           setIsEditingTask(false);
           setTaskToEdit(null);
+          setTaskFormError('');
         }}
       >
         <ModalDialog sx={{ minWidth: 500 }}>
@@ -882,16 +914,26 @@ function EventView() {
           </Typography>
           <form onSubmit={handleSubmitTask}>
             <Stack spacing={2}>
-              <FormControl required>
+              <FormControl required error={!!taskFormError}>
                 <FormLabel>Task Title</FormLabel>
                 <Input
                   value={taskForm.title}
-                  onChange={(e) =>
-                    setTaskForm({ ...taskForm, title: e.target.value })
-                  }
+                  onChange={(e) => {
+                    setTaskForm({ ...taskForm, title: e.target.value });
+                    setTaskFormError('');
+                  }}
                   placeholder="e.g., Get 99 Fishing"
                   size="lg"
                 />
+                {taskFormError ? (
+                  <Typography level="body-sm" color="danger" sx={{ mt: 0.5 }}>
+                    {taskFormError}
+                  </Typography>
+                ) : (
+                  <Typography level="body-sm" sx={{ mt: 0.5, opacity: 0.7 }}>
+                    Min 3 characters, max 100
+                  </Typography>
+                )}
               </FormControl>
               <FormControl>
                 <FormLabel>Description (optional)</FormLabel>
@@ -930,6 +972,7 @@ function EventView() {
                     setShowAddTaskModal(false);
                     setIsEditingTask(false);
                     setTaskToEdit(null);
+                    setTaskFormError('');
                   }}
                 >
                   Cancel
