@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   useParams,
   Link as RouterLink,
@@ -252,13 +252,13 @@ function EventView() {
     };
   }, [id, socket, joinEvent, leaveEvent, teams]);
 
-  const handleTeamCreated = (newTeam: Team) => {
-    setTeams([...teams, newTeam]);
-  };
+  const handleTeamCreated = useCallback((newTeam: Team) => {
+    setTeams(prev => [...prev, newTeam]);
+  }, []);
 
-  const handleTeamJoined = (updatedTeam: Team) => {
-    setTeams(teams.map((t) => (t.id === updatedTeam.id ? updatedTeam : t)));
-  };
+  const handleTeamJoined = useCallback((updatedTeam: Team) => {
+    setTeams(prev => prev.map((t) => (t.id === updatedTeam.id ? updatedTeam : t)));
+  }, []);
 
   const handleSubmitTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -329,7 +329,7 @@ function EventView() {
     }
   };
 
-  const handleCopyCode = async (code: string) => {
+  const handleCopyCode = useCallback(async (code: string) => {
     try {
       await navigator.clipboard.writeText(code);
       setCopiedCode(true);
@@ -337,7 +337,7 @@ function EventView() {
     } catch (err) {
       console.error('Failed to copy code:', err);
     }
-  };
+  }, []);
 
   const handlePublishEvent = async () => {
     if (!id || !event) return;
@@ -470,9 +470,10 @@ function EventView() {
 
   const isEventCreator = user?.id === event?.creatorId;
 
-  // Find user's team for this event
-  const userTeam = teams.find(
-    (team) => user && team.memberIds.includes(user.id),
+  // Find user's team for this event (memoized to prevent recalculation)
+  const userTeam = useMemo(
+    () => teams.find((team) => user && team.memberIds.includes(user.id)),
+    [teams, user]
   );
 
   const getStatusColor = (status: string) => {

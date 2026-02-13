@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo, useMemo } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { teamsApi, Team } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -26,7 +26,7 @@ interface TeamManagementProps {
   onTeamJoined: (team: Team) => void;
 }
 
-function TeamManagement({
+const TeamManagement = memo(function TeamManagement({
   eventId,
   eventStatus,
   isEventCreator,
@@ -44,8 +44,9 @@ function TeamManagement({
   const [error, setError] = useState('');
   const [copiedCode, setCopiedCode] = useState(false);
 
-  const userTeam = teams.find(
-    (team) => user && team.memberIds.includes(user.id),
+  const userTeam = useMemo(
+    () => teams.find((team) => user && team.memberIds.includes(user.id)),
+    [teams, user]
   );
 
   const handleCreateTeam = async (e: React.FormEvent) => {
@@ -441,6 +442,6 @@ function TeamManagement({
       )}
     </Box>
   );
-}
+});
 
 export default TeamManagement;

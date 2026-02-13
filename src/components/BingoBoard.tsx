@@ -1,4 +1,5 @@
 import { Task, Team } from '../services/api';
+import { memo, useMemo } from 'react';
 import Box from '@mui/joy/Box';
 import Card from '@mui/joy/Card';
 import Typography from '@mui/joy/Typography';
@@ -14,7 +15,7 @@ interface BingoBoardProps {
   userTeamId?: string;
 }
 
-function BingoBoard({
+const BingoBoard = memo(function BingoBoard({
   size,
   tasks = [],
   teams = [],
@@ -22,10 +23,16 @@ function BingoBoard({
   userTeamId,
 }: BingoBoardProps) {
   // Create a map of position to task for quick lookup
-  const taskMap = new Map(tasks.map((task) => [task.position, task]));
+  const taskMap = useMemo(
+    () => new Map(tasks.map((task) => [task.position, task])),
+    [tasks]
+  );
   
   // Create a map of team IDs to team names for quick lookup
-  const teamMap = new Map(teams.map((team) => [team.id, team.name]));
+  const teamMap = useMemo(
+    () => new Map(teams.map((team) => [team.id, team.name])),
+    [teams]
+  );
 
   // Generate cells for all positions
   const cells = Array.from({ length: size * size }, (_, i) => {
@@ -57,7 +64,7 @@ function BingoBoard({
       totalCompletions: task?.completedByTeamIds.length || 0,
       task: task,
     };
-  });
+  }), [size, taskMap, teamMap, userTeamId]);
 
   const handleCellClick = (cell: (typeof cells)[0]) => {
     if (onCellClick) {
@@ -174,6 +181,6 @@ function BingoBoard({
       ))}
     </Box>
   );
-}
+});
 
 export default BingoBoard;

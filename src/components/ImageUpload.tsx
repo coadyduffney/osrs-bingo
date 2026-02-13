@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback, memo } from 'react';
 import Box from '@mui/joy/Box';
 import Button from '@mui/joy/Button';
 import IconButton from '@mui/joy/IconButton';
@@ -21,7 +21,7 @@ interface ImageUploadProps {
   maxSizeMB?: number;
 }
 
-export default function ImageUpload({
+const ImageUpload = memo(function ImageUpload({
   onFileSelect,
   onRemove,
   uploadProgress,
@@ -33,7 +33,7 @@ export default function ImageUpload({
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -55,18 +55,18 @@ export default function ImageUpload({
       setError('Failed to load image preview');
       console.error('Preview error:', err);
     }
-  };
+  }, [onFileSelect]);
 
-  const handleRemove = () => {
+  const handleRemove = useCallback(() => {
     setLocalPreview(null);
     setError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
     onRemove();
-  };
+  }, [onRemove]);
 
-  const handleClick = () => {
+  const handleClick = useCallback(() => {
     fileInputRef.current?.click();
   };
 
@@ -169,4 +169,8 @@ export default function ImageUpload({
       )}
     </Box>
   );
-}
+});
+
+export default ImageUpload;);
+
+export default ImageUpload;
