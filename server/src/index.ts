@@ -7,9 +7,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { errorHandler } from './middleware/errorHandler.js';
 import authRoutes from './routes/auth.js';
-import eventRoutes from './routes/events';
-import teamRoutes from './routes/teams';
-import taskRoutes from './routes/tasks';
+import eventRoutes from './routes/events.js';
+import teamRoutes from './routes/teams.js';
+import taskRoutes from './routes/tasks.js';
 
 dotenv.config();
 
