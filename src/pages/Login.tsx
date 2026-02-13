@@ -41,9 +41,9 @@ const Login = memo(function Login() {
   }, [isRegistering, username, email, password, login, register, navigate]);
 
   const handleToggleMode = useCallback(() => {
-    setIsRegistering(!isRegistering);
+    setIsRegistering(prev => !prev);
     setError('');
-  }, [isRegistering]);
+  }, []);
 
   const handleUsernameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setUsername(e.target.value);
