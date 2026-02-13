@@ -238,8 +238,8 @@ export default function TeamDetails() {
     );
   }
 
-  const isCaptain = useMemo(() => currentUser?.id === team.captainId, [currentUser, team]);
-  const isMember = useMemo(() => currentUser && team.memberIds.includes(currentUser.id), [currentUser, team]);
+  const isCaptain = useMemo(() => currentUser?.id === team?.captainId, [currentUser, team]);
+  const isMember = useMemo(() => currentUser && team && team.memberIds.includes(currentUser.id), [currentUser, team]);
 
   return (
     <Box sx={{ maxWidth: 900, mx: 'auto', p: 3 }}>
