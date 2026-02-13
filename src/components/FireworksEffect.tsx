@@ -36,8 +36,8 @@ const FireworksEffect: React.FC<FireworksEffectProps> = ({ trigger, onComplete }
     
     const newFireworks: Firework[] = [];
     
-    // Create 3-5 fireworks at different positions
-    const numFireworks = 3 + Math.floor(Math.random() * 3);
+    // Create 5-8 fireworks at different positions
+    const numFireworks = 5 + Math.floor(Math.random() * 4);
     
     for (let i = 0; i < numFireworks; i++) {
       const x = 20 + Math.random() * 60; // Random position 20-80% across
@@ -50,7 +50,7 @@ const FireworksEffect: React.FC<FireworksEffectProps> = ({ trigger, onComplete }
       
       for (let j = 0; j < particleCount; j++) {
         const angle = (j / particleCount) * Math.PI * 2;
-        const speed = 2 + Math.random() * 3;
+        const speed = 1.5 + Math.random() * 2.5;
         
         particles.push({
           id: j,
@@ -83,9 +83,9 @@ const FireworksEffect: React.FC<FireworksEffectProps> = ({ trigger, onComplete }
           particles: fw.particles
             .map(p => ({
               ...p,
-              x: p.x + p.vx,
-              y: p.y + p.vy + 0.1, // Gravity
-              vy: p.vy + 0.05, // Gravity acceleration
+              x: p.x + p.vx * 0.8,
+              y: p.y + p.vy * 0.8 + 0.08, // Slower gravity
+              vy: p.vy + 0.04, // Reduced gravity acceleration
               life: p.life - 1,
             }))
             .filter(p => p.life > 0),
