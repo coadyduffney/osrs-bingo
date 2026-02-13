@@ -9,6 +9,7 @@ import BingoBoard from '../components/BingoBoard';
 import TeamManagement from '../components/TeamManagement';
 import ImageUpload from '../components/ImageUpload';
 import Leaderboard from '../components/Leaderboard';
+import FireworksEffect from '../components/FireworksEffect';
 import {
   eventsApi,
   teamsApi,
@@ -76,6 +77,7 @@ function EventView() {
   const [publishing, setPublishing] = useState(false);
   const [showCompleteTaskModal, setShowCompleteTaskModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [showFireworks, setShowFireworks] = useState(false);
   const [taskCompletions, setTaskCompletions] = useState<TaskCompletion[]>([]);
   const [loadingCompletions, setLoadingCompletions] = useState(false);
   const [completing, setCompleting] = useState(false);
@@ -236,6 +238,8 @@ function EventView() {
           message: `${completingTeam.name} completed "${data.task.title}"!`,
           color: 'success',
         });
+        // Trigger fireworks celebration!
+        setShowFireworks(true);
       }
     };
 
@@ -1405,6 +1409,12 @@ function EventView() {
       >
         {snackbar.message}
       </Snackbar>
+
+      {/* OSRS-style fireworks celebration */}
+      <FireworksEffect 
+        trigger={showFireworks} 
+        onComplete={() => setShowFireworks(false)} 
+      />
     </Box>
   );
 }
