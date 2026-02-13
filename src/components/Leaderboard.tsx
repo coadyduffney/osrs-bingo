@@ -274,22 +274,18 @@ export default function Leaderboard({ teams, members }: LeaderboardProps) {
           >
             {topThree.map((entry, index) => {
               const rank = index + 1;
-              let bgColor = 'neutral.100';
               let textColor = 'text.primary';
               let medal = '';
 
               if (rank === 1) {
                 medal = '🥇';
-                bgColor = 'warning.50';
-                textColor = 'warning.700';
+                textColor = 'primary.plainColor';
               } else if (rank === 2) {
                 medal = '🥈';
-                bgColor = 'neutral.100';
-                textColor = 'neutral.700';
+                textColor = 'primary.plainColor';
               } else if (rank === 3) {
                 medal = '🥉';
-                bgColor = 'warning.50';
-                textColor = 'warning.600';
+                textColor = 'primary.plainColor';
               }
 
               return (
@@ -301,7 +297,7 @@ export default function Leaderboard({ teams, members }: LeaderboardProps) {
                     borderRadius: 'md',
                     textAlign: 'center',
                     minWidth: 150,
-                    bgcolor: bgColor,
+                    bgcolor: 'neutral.800',
                   }}
                 >
                   <Typography level="h4" sx={{ mb: 0.5 }}>
