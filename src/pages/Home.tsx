@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { eventsApi, Event } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -68,7 +68,7 @@ function Home() {
     }
   };
 
-  const handleJoinWithCode = async (e: React.FormEvent) => {
+  const handleJoinWithCode = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!joinCode.trim() || !isAuthenticated) return;
 
@@ -89,10 +89,10 @@ function Home() {
     } finally {
       setJoiningEvent(false);
     }
-  };
+  }, [joinCode, isAuthenticated, navigate]);
 
-  // Filter and sort events
-  const filteredAndSortedEvents = events
+  // Filter and sort events (memoized)
+  const filteredAndSortedEvents = useMemo(() => events
     .filter((event) => {
       // Search filter
       if (searchQuery) {
@@ -120,7 +120,7 @@ function Home() {
         default:
           return 0;
       }
-    });
+    }), [events, searchQuery, sortBy]);
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>

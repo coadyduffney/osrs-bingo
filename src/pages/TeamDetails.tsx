@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { teamsApi, eventsApi, authApi, Team, Event, User } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -104,17 +104,17 @@ export default function TeamDetails() {
     fetchTeamDetails();
   }, [id]);
 
-  const handleEditToggle = () => {
+  const handleEditToggle = useCallback(() => {
     if (team) {
       setEditForm({ name: team.name, description: team.description || '' });
       setIsEditing(true);
     }
-  };
+  }, [team]);
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = useCallback(() => {
     setIsEditing(false);
     setEditForm({ name: '', description: '' });
-  };
+  }, []);
 
   const handleSaveEdit = async () => {
     if (!team || !id) return;
@@ -238,8 +238,8 @@ export default function TeamDetails() {
     );
   }
 
-  const isCaptain = currentUser?.id === team.captainId;
-  const isMember = currentUser && team.memberIds.includes(currentUser.id);
+  const isCaptain = useMemo(() => currentUser?.id === team.captainId, [currentUser, team]);
+  const isMember = useMemo(() => currentUser && team.memberIds.includes(currentUser.id), [currentUser, team]);
 
   return (
     <Box sx={{ maxWidth: 900, mx: 'auto', p: 3 }}>

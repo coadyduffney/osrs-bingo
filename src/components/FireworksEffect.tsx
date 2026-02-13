@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 import Box from '@mui/joy/Box';
 
 interface Firework {
@@ -24,7 +24,7 @@ interface FireworksEffectProps {
   trigger: number;
 }
 
-const FireworksEffect: React.FC<FireworksEffectProps> = ({ trigger }) => {
+const FireworksEffect = memo(function FireworksEffect({ trigger }: FireworksEffectProps) {
   const [fireworks, setFireworks] = useState<Firework[]>([]);
 
   useEffect(() => {
@@ -174,6 +174,6 @@ const FireworksEffect: React.FC<FireworksEffectProps> = ({ trigger }) => {
       ))}
     </Box>
   );
-};
+});
 
 export default FireworksEffect;

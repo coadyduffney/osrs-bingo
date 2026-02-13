@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { eventsApi, Event } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -64,8 +64,8 @@ function MyEvents() {
     }
   };
 
-  // Filter and sort events
-  const filteredAndSortedEvents = events
+  // Filter and sort events (memoized)
+  const filteredAndSortedEvents = useMemo(() => events
     .filter((event) => {
       // Search filter
       if (searchQuery) {
@@ -99,7 +99,7 @@ function MyEvents() {
         default:
           return 0;
       }
-    });
+    }), [events, searchQuery, statusFilter, sortBy]);
 
   const activeEvents = filteredAndSortedEvents.filter(
     (e) => e.status === 'active' || e.status === 'draft',

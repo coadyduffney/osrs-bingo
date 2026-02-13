@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import {
   Box,
   Typography,
@@ -30,7 +30,7 @@ interface LeaderboardEntry {
   isCaptain: boolean;
 }
 
-export default function Leaderboard({ teams, members }: LeaderboardProps) {
+const Leaderboard = memo(function Leaderboard({ teams, members }: LeaderboardProps) {
   const [teamFilter, setTeamFilter] = useState<string>('all');
 
   // Build leaderboard data
@@ -337,4 +337,6 @@ export default function Leaderboard({ teams, members }: LeaderboardProps) {
       )}
     </Box>
   );
-}
+});
+
+export default Leaderboard;

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { eventsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -26,7 +26,7 @@ function CreateEvent() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!isAuthenticated) {
@@ -52,7 +52,7 @@ function CreateEvent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAuthenticated, eventName, description, boardSize, navigate]);
 
   return (
     <Box sx={{ maxWidth: 800, mx: 'auto', p: 3 }}>
