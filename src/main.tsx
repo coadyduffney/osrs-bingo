@@ -18,11 +18,6 @@ const theme = extendTheme({
           boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
           border: '2px solid rgba(255, 255, 255, 0.08)',
           backgroundImage: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.02), transparent)',
-          transition: 'all 0.2s ease',
-          '&:hover': {
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
-            transform: 'translateY(-1px)',
-          },
         },
       },
     },
