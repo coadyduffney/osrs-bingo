@@ -47,7 +47,13 @@ function Login() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(180deg, #0a0e1a 0%, #1a1f2e 50%, #2a2f3e 100%)',
+        background: `
+          linear-gradient(90deg, #3a3a3a 0px, transparent 1px),
+          linear-gradient(180deg, #3a3a3a 0px, transparent 1px),
+          linear-gradient(180deg, #2d2d2d 0%, #1a1a1a 100%)
+        `,
+        backgroundSize: '60px 60px, 60px 60px, 100% 100%',
+        backgroundPosition: '0 0, 0 0, 0 0',
         position: 'relative',
         overflow: 'hidden',
         '&::before': {
@@ -57,40 +63,146 @@ function Login() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundImage: `
-            radial-gradient(circle at 20% 50%, rgba(139, 69, 19, 0.1) 0%, transparent 50%),
-            radial-gradient(circle at 80% 50%, rgba(139, 69, 19, 0.1) 0%, transparent 50%)
+          background: `
+            repeating-linear-gradient(
+              0deg,
+              transparent,
+              transparent 59px,
+              rgba(0, 0, 0, 0.3) 59px,
+              rgba(0, 0, 0, 0.3) 60px
+            ),
+            repeating-linear-gradient(
+              90deg,
+              transparent,
+              transparent 59px,
+              rgba(0, 0, 0, 0.3) 59px,
+              rgba(0, 0, 0, 0.3) 60px
+            ),
+            repeating-linear-gradient(
+              0deg,
+              rgba(80, 70, 60, 0.1) 0px,
+              rgba(60, 50, 40, 0.1) 30px,
+              rgba(80, 70, 60, 0.1) 60px
+            )
           `,
+          pointerEvents: 'none',
+        },
+        '&::after': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 0, 0.4) 100%)',
           pointerEvents: 'none',
         },
       }}
     >
-      {/* Decorative torches */}
+      {/* Left Torch */}
       <Box
         sx={{
           position: 'absolute',
-          left: '10%',
-          top: '30%',
-          fontSize: '4rem',
-          animation: 'flicker 2s infinite',
-          '@keyframes flicker': {
-            '0%, 100%': { opacity: 0.9, textShadow: '0 0 20px #ff6600, 0 0 40px #ff4400' },
-            '50%': { opacity: 1, textShadow: '0 0 30px #ff6600, 0 0 60px #ff4400' },
-          },
+          left: { xs: '5%', md: '10%' },
+          top: '25%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
         }}
       >
-        🔥
+        {/* Flame */}
+        <Box
+          sx={{
+            fontSize: '3rem',
+            filter: 'drop-shadow(0 0 20px #ff6600)',
+            animation: 'flicker 2s infinite',
+            '@keyframes flicker': {
+              '0%, 100%': { 
+                opacity: 0.9, 
+                transform: 'scale(1) translateY(0px)',
+                filter: 'drop-shadow(0 0 20px #ff6600) drop-shadow(0 0 40px #ff4400)',
+              },
+              '50%': { 
+                opacity: 1, 
+                transform: 'scale(1.1) translateY(-3px)',
+                filter: 'drop-shadow(0 0 30px #ff6600) drop-shadow(0 0 60px #ff4400)',
+              },
+            },
+          }}
+        >
+          🔥
+        </Box>
+        {/* Torch Handle */}
+        <Box
+          sx={{
+            width: '12px',
+            height: '120px',
+            background: 'linear-gradient(90deg, #3d2817 0%, #5a3d2a 50%, #3d2817 100%)',
+            border: '2px solid #2d1f12',
+            borderRadius: '3px',
+            boxShadow: 'inset 0 0 5px rgba(0, 0, 0, 0.5), 2px 2px 4px rgba(0, 0, 0, 0.6)',
+            position: 'relative',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: '-8px',
+              left: '-6px',
+              width: '24px',
+              height: '20px',
+              background: 'linear-gradient(145deg, #4a3520 0%, #3a2510 100%)',
+              border: '2px solid #2d1f12',
+              borderRadius: '50% 50% 0 0',
+              boxShadow: 'inset 0 -2px 4px rgba(0, 0, 0, 0.4)',
+            },
+          }}
+        />
       </Box>
+
+      {/* Right Torch */}
       <Box
         sx={{
           position: 'absolute',
-          right: '10%',
-          top: '30%',
-          fontSize: '4rem',
-          animation: 'flicker 2s infinite 1s',
+          right: { xs: '5%', md: '10%' },
+          top: '25%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
         }}
       >
-        🔥
+        {/* Flame */}
+        <Box
+          sx={{
+            fontSize: '3rem',
+            filter: 'drop-shadow(0 0 20px #ff6600)',
+            animation: 'flicker 2s infinite 1s',
+          }}
+        >
+          🔥
+        </Box>
+        {/* Torch Handle */}
+        <Box
+          sx={{
+            width: '12px',
+            height: '120px',
+            background: 'linear-gradient(90deg, #3d2817 0%, #5a3d2a 50%, #3d2817 100%)',
+            border: '2px solid #2d1f12',
+            borderRadius: '3px',
+            boxShadow: 'inset 0 0 5px rgba(0, 0, 0, 0.5), 2px 2px 4px rgba(0, 0, 0, 0.6)',
+            position: 'relative',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: '-8px',
+              left: '-6px',
+              width: '24px',
+              height: '20px',
+              background: 'linear-gradient(145deg, #4a3520 0%, #3a2510 100%)',
+              border: '2px solid #2d1f12',
+              borderRadius: '50% 50% 0 0',
+              boxShadow: 'inset 0 -2px 4px rgba(0, 0, 0, 0.4)',
+            },
+          }}
+        />
       </Box>
 
       {/* Login Box */}
