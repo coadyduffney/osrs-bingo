@@ -112,7 +112,7 @@ function Home() {
               : 'Browse active bingo events below and login to join a team! Compete with others in fun OSRS challenges.'}
           </Typography>
           {isAuthenticated ? (
-            <Button component={RouterLink} to="/create" size="lg">
+            <Button component={RouterLink} to="/create" size="lg" sx={{ alignSelf: 'flex-start' }}>
               Create New Event
             </Button>
           ) : (

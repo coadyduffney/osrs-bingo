@@ -309,12 +309,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🙏 Acknowledgments
-
-- Inspired by the OSRS community's clan bingo events
-- Built with modern web technologies and best practices
-- Special thanks to the OSRS community for inspiration
-
 ## 📧 Support
 
 For issues, questions, or suggestions:
