@@ -119,6 +119,7 @@ export interface User {
   email: string;
   displayName?: string;
   avatarUrl?: string;
+  rsn?: string; // RuneScape Name for XP tracking
 }
 
 export interface AuthResponse {
@@ -136,6 +137,9 @@ export interface Event {
   startDate?: string;
   endDate?: string;
   joinCode: string;
+  trackingEnabled?: boolean;
+  eventStartedAt?: string;
+  eventEndedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -332,6 +336,40 @@ export const tasksApi = {
       teamId,
       ...verificationData,
     }),
+};
+
+// XP Tracking API
+export const trackingApi = {
+  startTracking: (eventId: string) =>
+    apiClient.post<ApiResponse<{ message: string; playersTracked: number; players: string[] }>>(`/api/tracking/${eventId}/start`),
+
+  endTracking: (eventId: string) =>
+    apiClient.post<ApiResponse<{ message: string }>>(`/api/tracking/${eventId}/end`),
+
+  refreshSnapshots: (eventId: string) =>
+    apiClient.post<ApiResponse<{ message: string; playersUpdated: number }>>(`/api/tracking/${eventId}/refresh`),
+
+  getProgress: (eventId: string) =>
+    apiClient.get<ApiResponse<{
+      eventId: string;
+      teams: Array<{
+        teamId: string;
+        members: Array<{
+          userId: string;
+          rsn: string;
+          gains: {
+            [skill: string]: {
+              baseXP: number;
+              currentXP: number;
+              gain: number;
+            };
+          };
+        }>;
+        totalGains: {
+          [skill: string]: number;
+        };
+      }>;
+    }>>(`/api/tracking/${eventId}/progress`),
 };
 
 export default apiClient;

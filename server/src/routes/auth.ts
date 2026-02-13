@@ -138,7 +138,7 @@ router.get('/me', authMiddleware, asyncHandler(async (req: Request, res: Respons
 // Update current user profile
 router.put('/me', authMiddleware, asyncHandler(async (req: Request, res: Response) => {
   const userId = (req as any).user.id;
-  const { displayName, avatarUrl } = req.body;
+  const { displayName, avatarUrl, rsn } = req.body;
 
   // Validate input
   if (displayName !== undefined && typeof displayName !== 'string') {
@@ -147,10 +147,14 @@ router.put('/me', authMiddleware, asyncHandler(async (req: Request, res: Respons
   if (avatarUrl !== undefined && typeof avatarUrl !== 'string') {
     throw new ApiErrorClass(400, 'avatarUrl must be a string');
   }
+  if (rsn !== undefined && typeof rsn !== 'string') {
+    throw new ApiErrorClass(400, 'rsn must be a string');
+  }
 
   const updateData: any = {};
   if (displayName !== undefined) updateData.displayName = displayName;
   if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl;
+  if (rsn !== undefined) updateData.rsn = rsn;
 
   await userRepo.update(userId, updateData);
 

@@ -10,6 +10,7 @@ import authRoutes from './routes/auth.js';
 import eventRoutes from './routes/events.js';
 import teamRoutes from './routes/teams.js';
 import taskRoutes from './routes/tasks.js';
+import trackingRoutes from './routes/tracking.js';
 
 dotenv.config();
 
@@ -72,6 +73,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/tracking', trackingRoutes);
 
 // Error handling
 app.use(errorHandler);

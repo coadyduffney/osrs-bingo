@@ -60,6 +60,7 @@ router.post('/', authMiddleware, asyncHandler(async (req: Request, res: Response
       boardSize,
       creatorId: (req as any).user.id, // Use authenticated user's ID
       status: 'draft',
+      trackingEnabled: false,
       settings: {
         allowMultipleCompletions: false,
         requireVerification: false

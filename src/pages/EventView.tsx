@@ -15,6 +15,7 @@ import {
   teamsApi,
   tasksApi,
   authApi,
+  trackingApi,
   Event,
   Team,
   Task,
@@ -105,6 +106,9 @@ function EventView() {
     color: 'success',
   });
   const [submitting, setSubmitting] = useState(false);
+  const [startingTracking, setStartingTracking] = useState(false);
+  const [endingTracking, setEndingTracking] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Check if user arrived via join code
   useEffect(() => {
@@ -150,7 +154,7 @@ function EventView() {
     };
 
     fetchEventData();
-  }, [id]);
+  }, [id, refreshTrigger]);
 
   // Fetch team members for leaderboard
   useEffect(() => {
@@ -371,6 +375,70 @@ function EventView() {
       setError(err instanceof Error ? err.message : 'Failed to publish event');
     } finally {
       setPublishing(false);
+    }
+  };
+
+  const handleStartTracking = async () => {
+    if (!id) return;
+
+    try {
+      setStartingTracking(true);
+      const response = await trackingApi.startTracking(id);
+      if (response.success) {
+        setSnackbar({
+          open: true,
+          message: `Tracking started for ${response.data.playersTracked} players`,
+          color: 'success',
+        });
+        // Update local event state immediately
+        if (event) {
+          setEvent({ ...event, trackingEnabled: true });
+        }
+        // Also refresh from server after a short delay
+        setTimeout(() => {
+          setRefreshTrigger(prev => prev + 1);
+        }, 500);
+      }
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err instanceof Error ? err.message : 'Failed to start tracking',
+        color: 'danger',
+      });
+    } finally {
+      setStartingTracking(false);
+    }
+  };
+
+  const handleEndTracking = async () => {
+    if (!id) return;
+
+    try {
+      setEndingTracking(true);
+      const response = await trackingApi.endTracking(id);
+      if (response.success) {
+        setSnackbar({
+          open: true,
+          message: 'Tracking ended successfully',
+          color: 'success',
+        });
+        // Update local event state immediately
+        if (event) {
+          setEvent({ ...event, trackingEnabled: false });
+        }
+        // Also refresh from server after a short delay
+        setTimeout(() => {
+          setRefreshTrigger(prev => prev + 1);
+        }, 500);
+      }
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err instanceof Error ? err.message : 'Failed to end tracking',
+        color: 'danger',
+      });
+    } finally {
+      setEndingTracking(false);
     }
   };
 
@@ -630,6 +698,28 @@ function EventView() {
                       loading={publishing}
                     >
                       Publish Event
+                    </Button>
+                  )}
+                  {event.status === 'active' && !event.trackingEnabled && (
+                    <Button
+                      color="primary"
+                      variant="solid"
+                      size="sm"
+                      onClick={handleStartTracking}
+                      loading={startingTracking}
+                    >
+                      Start XP Tracking
+                    </Button>
+                  )}
+                  {event.status === 'active' && event.trackingEnabled && (
+                    <Button
+                      color="warning"
+                      variant="solid"
+                      size="sm"
+                      onClick={handleEndTracking}
+                      loading={endingTracking}
+                    >
+                      End XP Tracking
                     </Button>
                   )}
                   <Button

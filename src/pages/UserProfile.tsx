@@ -28,12 +28,14 @@ function UserProfile() {
   const [success, setSuccess] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [displayName, setDisplayName] = useState('');
+  const [rsn, setRsn] = useState('');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | undefined>();
 
   useEffect(() => {
     if (user) {
       setDisplayName(user.displayName || '');
+      setRsn(user.rsn || '');
     }
   }, [user]);
 
@@ -90,6 +92,7 @@ function UserProfile() {
     try {
       const response = await authApi.updateProfile({
         displayName: displayName.trim() || undefined,
+        rsn: rsn.trim() || undefined,
       });
 
       if (response.success) {
@@ -108,6 +111,7 @@ function UserProfile() {
   const handleCancelEdit = () => {
     setIsEditing(false);
     setDisplayName(user?.displayName || '');
+    setRsn(user?.rsn || '');
     setError('');
   };
 
@@ -250,6 +254,19 @@ function UserProfile() {
               />
               <Typography level="body-xs" sx={{ mt: 0.5, color: 'text.tertiary' }}>
                 This is how your name will appear to other users
+              </Typography>
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>RuneScape Name (RSN)</FormLabel>
+              <Input
+                value={rsn}
+                onChange={(e) => setRsn(e.target.value)}
+                placeholder="Enter your OSRS character name"
+                disabled={!isEditing}
+              />
+              <Typography level="body-xs" sx={{ mt: 0.5, color: 'text.tertiary' }}>
+                Required for automatic XP tracking in events
               </Typography>
             </FormControl>
 

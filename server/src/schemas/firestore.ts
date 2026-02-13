@@ -14,6 +14,7 @@ export interface UserDocument extends FirestoreDocument {
   passwordHash: string;
   displayName?: string;
   avatarUrl?: string;
+  rsn?: string; // RuneScape Name for XP tracking
   createdEvents: string[]; // Array of event IDs
   joinedTeams: string[]; // Array of team IDs
 }
@@ -27,6 +28,9 @@ export interface EventDocument extends FirestoreDocument {
   status: 'draft' | 'active' | 'completed' | 'cancelled';
   startDate?: Timestamp;
   endDate?: Timestamp;
+  eventStartedAt?: Timestamp; // When tracking actually started
+  eventEndedAt?: Timestamp; // When tracking ended
+  trackingEnabled: boolean; // Whether XP tracking is active
   teamIds: string[]; // Array of team IDs
   taskIds: string[]; // Array of task IDs
   joinCode: string; // 6-character code for joining event
@@ -149,4 +153,20 @@ export interface TeamStats {
   score: number;
   completionRate: number; // Percentage
   lastActivity?: Timestamp;
+}
+
+// Player snapshot for XP tracking
+export interface PlayerSnapshotDocument {
+  eventId: string;
+  teamId: string;
+  userId: string;
+  rsn: string; // RuneScape Name
+  snapshotType: 'baseline' | 'current'; // baseline = event start, current = latest
+  capturedAt: Timestamp;
+  skills: {
+    [skillName: string]: {
+      experience: number;
+      level: number;
+    };
+  };
 }
