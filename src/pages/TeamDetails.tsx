@@ -211,6 +211,10 @@ export default function TeamDetails() {
     }
   };
 
+  // Calculate permissions before early returns to maintain consistent hook order
+  const isCaptain = useMemo(() => currentUser?.id === team?.captainId, [currentUser, team]);
+  const isMember = useMemo(() => currentUser && team && team.memberIds.includes(currentUser.id), [currentUser, team]);
+
   if (loading) {
     return (
       <Box
@@ -237,9 +241,6 @@ export default function TeamDetails() {
       </Box>
     );
   }
-
-  const isCaptain = useMemo(() => currentUser?.id === team?.captainId, [currentUser, team]);
-  const isMember = useMemo(() => currentUser && team && team.memberIds.includes(currentUser.id), [currentUser, team]);
 
   return (
     <Box sx={{ maxWidth: 900, mx: 'auto', p: 3 }}>
