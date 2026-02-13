@@ -68,6 +68,11 @@ export interface TaskDocument extends FirestoreDocument {
   difficulty?: 'easy' | 'medium' | 'hard' | 'elite';
   imageUrl?: string;
   hints?: string[];
+  isXPTask?: boolean; // Whether this is an XP-based task
+  xpRequirement?: {
+    skill: string; // e.g., "agility", "mining"
+    amount: number; // XP required
+  };
   completedByTeamIds: string[]; // Array of Team IDs that completed this task
   verificationRequired: boolean;
 }

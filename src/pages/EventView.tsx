@@ -10,6 +10,7 @@ import TeamManagement from '../components/TeamManagement';
 import ImageUpload from '../components/ImageUpload';
 import Leaderboard from '../components/Leaderboard';
 import FireworksEffect from '../components/FireworksEffect';
+import XPProgress from '../components/XPProgress';
 import {
   eventsApi,
   teamsApi,
@@ -43,11 +44,21 @@ import FormControl from '@mui/joy/FormControl';
 import FormLabel from '@mui/joy/FormLabel';
 import Input from '@mui/joy/Input';
 import Textarea from '@mui/joy/Textarea';
+import Checkbox from '@mui/joy/Checkbox';
+import Select from '@mui/joy/Select';
+import Option from '@mui/joy/Option';
 import ImageIcon from '@mui/icons-material/Image';
 import Modal from '@mui/joy/Modal';
 import ModalDialog from '@mui/joy/ModalDialog';
 import ModalClose from '@mui/joy/ModalClose';
 import Snackbar from '@mui/joy/Snackbar';
+
+const OSRS_SKILLS = [
+  'attack', 'strength', 'defence', 'ranged', 'prayer', 'magic',
+  'runecraft', 'construction', 'hitpoints', 'agility', 'herblore', 'thieving',
+  'crafting', 'fletching', 'slayer', 'hunter', 'mining', 'smithing',
+  'fishing', 'cooking', 'firemaking', 'woodcutting', 'farming'
+];
 
 function EventView() {
   const { id } = useParams<{ id: string }>();
@@ -94,6 +105,9 @@ function EventView() {
     title: '',
     description: '',
     points: 1,
+    isXPTask: false,
+    xpSkill: '',
+    xpAmount: 0,
   });
   const [taskFormError, setTaskFormError] = useState('');
   const [snackbar, setSnackbar] = useState<{
@@ -282,11 +296,24 @@ function EventView() {
 
       if (isEditingTask && taskToEdit) {
         // Update existing task
-        const response = await tasksApi.update(taskToEdit.id, {
+        const updateData: any = {
           title: taskForm.title,
           description: taskForm.description,
           points: taskForm.points,
-        });
+          isXPTask: taskForm.isXPTask,
+        };
+        
+        if (taskForm.isXPTask && taskForm.xpSkill && taskForm.xpAmount > 0) {
+          updateData.xpRequirement = {
+            skill: taskForm.xpSkill,
+            amount: taskForm.xpAmount,
+          };
+        } else {
+          // Clear XP requirement if no longer an XP task
+          updateData.xpRequirement = null;
+        }
+        
+        const response = await tasksApi.update(taskToEdit.id, updateData);
 
         if (response.success) {
           // Update tasks list
@@ -294,7 +321,7 @@ function EventView() {
             prev.map((t) => (t.id === taskToEdit.id ? response.data : t)),
           );
           setShowAddTaskModal(false);
-          setTaskForm({ title: '', description: '', points: 1 });
+          setTaskForm({ title: '', description: '', points: 1, isXPTask: false, xpSkill: '', xpAmount: 0 });
           setSelectedPosition(null);
           setIsEditingTask(false);
           setTaskToEdit(null);
@@ -307,13 +334,23 @@ function EventView() {
         }
       } else {
         // Create new task
-        const response = await tasksApi.create({
+        const createData: any = {
           eventId: id,
           title: taskForm.title,
           description: taskForm.description,
           points: taskForm.points,
           position: selectedPosition,
-        });
+          isXPTask: taskForm.isXPTask,
+        };
+        
+        if (taskForm.isXPTask && taskForm.xpSkill && taskForm.xpAmount > 0) {
+          createData.xpRequirement = {
+            skill: taskForm.xpSkill,
+            amount: taskForm.xpAmount,
+          };
+        }
+        
+        const response = await tasksApi.create(createData);
 
         if (response.success) {
           // Update tasks list
@@ -322,7 +359,7 @@ function EventView() {
             response.data,
           ]);
           setShowAddTaskModal(false);
-          setTaskForm({ title: '', description: '', points: 1 });
+          setTaskForm({ title: '', description: '', points: 1, isXPTask: false, xpSkill: '', xpAmount: 0 });
           setSelectedPosition(null);
           setTaskFormError('');
           setSnackbar({
@@ -463,6 +500,16 @@ function EventView() {
     } else if (isEventCreator) {
       // Event creator can add a task to empty position
       setSelectedPosition(position);
+      setTaskForm({
+        title: '',
+        description: '',
+        points: 1,
+        isXPTask: false,
+        xpSkill: '',
+        xpAmount: 0,
+      });
+      setIsEditingTask(false);
+      setTaskToEdit(null);
       setShowAddTaskModal(true);
     }
   };
@@ -769,6 +816,7 @@ function EventView() {
           <Tab>Bingo Board</Tab>
           <Tab>Teams</Tab>
           <Tab>Leaderboard</Tab>
+          {event.trackingEnabled && <Tab>XP Progress</Tab>}
         </TabList>
 
         {/* Bingo Board Tab */}
@@ -937,6 +985,17 @@ function EventView() {
             </CardContent>
           </Card>
         </TabPanel>
+
+        {/* XP Progress Tab */}
+        {event.trackingEnabled && (
+          <TabPanel value={3} sx={{ p: 0, pt: 2 }}>
+            <Card>
+              <CardContent>
+                <XPProgress eventId={event.id} teams={teams} />
+              </CardContent>
+            </Card>
+          </TabPanel>
+        )}
       </Tabs>
 
       {/* Add/Edit Task Modal */}
@@ -947,6 +1006,14 @@ function EventView() {
           setIsEditingTask(false);
           setTaskToEdit(null);
           setTaskFormError('');
+          setTaskForm({
+            title: '',
+            description: '',
+            points: 1,
+            isXPTask: false,
+            xpSkill: '',
+            xpAmount: 0,
+          });
         }}
       >
         <ModalDialog sx={{ minWidth: 500 }}>
@@ -1005,6 +1072,61 @@ function EventView() {
                   slotProps={{ input: { min: 1, max: 100 } }}
                 />
               </FormControl>
+              
+              {/* XP Task Fields */}
+              <FormControl>
+                <Checkbox
+                  checked={taskForm.isXPTask}
+                  onChange={(e) =>
+                    setTaskForm({ ...taskForm, isXPTask: e.target.checked })
+                  }
+                  label="This is an XP-based task"
+                />
+                <Typography level="body-sm" sx={{ mt: 0.5, opacity: 0.7 }}>
+                  Auto-complete when team gains required XP
+                </Typography>
+              </FormControl>
+              
+              {taskForm.isXPTask && (
+                <>
+                  <FormControl required>
+                    <FormLabel>Skill</FormLabel>
+                    <Select
+                      value={taskForm.xpSkill}
+                      onChange={(_, value) =>
+                        setTaskForm({ ...taskForm, xpSkill: value || '' })
+                      }
+                      placeholder="Select a skill"
+                    >
+                      {OSRS_SKILLS.map((skill) => (
+                        <Option key={skill} value={skill}>
+                          {skill.charAt(0).toUpperCase() + skill.slice(1)}
+                        </Option>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  
+                  <FormControl required>
+                    <FormLabel>XP Required</FormLabel>
+                    <Input
+                      type="number"
+                      value={taskForm.xpAmount}
+                      onChange={(e) =>
+                        setTaskForm({
+                          ...taskForm,
+                          xpAmount: parseInt(e.target.value) || 0,
+                        })
+                      }
+                      placeholder="e.g., 5000000 for 5M XP"
+                      slotProps={{ input: { min: 0, step: 100000 } }}
+                    />
+                    <Typography level="body-sm" sx={{ mt: 0.5, opacity: 0.7 }}>
+                      Total XP gain required by team
+                    </Typography>
+                  </FormControl>
+                </>
+              )}
+              
               <Stack
                 direction="row"
                 spacing={2}
@@ -1190,6 +1312,9 @@ function EventView() {
                               title: selectedTask.title,
                               description: selectedTask.description,
                               points: selectedTask.points,
+                              isXPTask: !!selectedTask.xpRequirement,
+                              xpSkill: selectedTask.xpRequirement?.skill || '',
+                              xpAmount: selectedTask.xpRequirement?.amount || 0,
                             });
                             setSelectedPosition(selectedTask.position);
                             setShowCompleteTaskModal(false);

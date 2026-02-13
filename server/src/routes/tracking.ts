@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { db } from '../config/firebase';
 import { authMiddleware } from '../middleware/auth';
 import { WiseOldManService } from '../services/wiseOldMan';
-import { Timestamp } from 'firebase-admin/firestore';
+import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 
 const router = Router();
 const womService = new WiseOldManService();
@@ -373,6 +373,132 @@ router.get('/:eventId/progress', async (req: Request, res: Response, next: NextF
       data: {
         eventId,
         teams: Array.from(teamGains.values()),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Check and auto-complete XP-based tasks
+router.post('/:eventId/check-xp-tasks', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { eventId } = req.params;
+
+    // Get all XP-based tasks for this event
+    const tasksSnapshot = await db
+      .collection('tasks')
+      .where('eventId', '==', eventId)
+      .where('isXPTask', '==', true)
+      .get();
+
+    if (tasksSnapshot.empty) {
+      return res.json({
+        success: true,
+        data: {
+          message: 'No XP-based tasks found',
+          completedTasks: [],
+        },
+      });
+    }
+
+    // Get progress data
+    const snapshotsSnapshot = await db
+      .collection('playerSnapshots')
+      .where('eventId', '==', eventId)
+      .get();
+
+    const baselines = new Map();
+    const currents = new Map();
+
+    snapshotsSnapshot.docs.forEach((doc) => {
+      const data = doc.data();
+      const key = `${data.teamId}-${data.userId}`;
+
+      if (data.snapshotType === 'baseline') {
+        baselines.set(key, data);
+      } else if (data.snapshotType === 'current') {
+        currents.set(key, data);
+      }
+    });
+
+    // Calculate team XP gains
+    const teamGains = new Map<string, { [skill: string]: number }>();
+
+    baselines.forEach((baseline, key) => {
+      const current = currents.get(key);
+      if (!current) return;
+
+      const teamId = baseline.teamId;
+      if (!teamGains.has(teamId)) {
+        teamGains.set(teamId, {});
+      }
+
+      const gains = teamGains.get(teamId)!;
+
+      // Calculate skill gains
+      for (const skill in baseline.skills) {
+        const baseXP = baseline.skills[skill].experience;
+        const currentXP = current.skills[skill]?.experience || baseXP;
+        const gain = currentXP - baseXP;
+
+        if (!gains[skill]) {
+          gains[skill] = 0;
+        }
+        gains[skill] += gain;
+      }
+    });
+
+    // Check each task and auto-complete if requirement met
+    const completedTasks: Array<{ taskId: string; teamId: string; skill: string; gained: number; required: number }> = [];
+    const batch = db.batch();
+
+    for (const taskDoc of tasksSnapshot.docs) {
+      const task = taskDoc.data();
+      if (!task.xpRequirement) continue;
+
+      const { skill, amount } = task.xpRequirement;
+
+      // Check each team's progress
+      teamGains.forEach((gains, teamId) => {
+        const skillGain = gains[skill.toLowerCase()] || 0;
+
+        // If team gained enough XP and hasn't completed this task yet
+        if (skillGain >= amount && !task.completedByTeamIds.includes(teamId)) {
+          // Mark task as completed
+          batch.update(taskDoc.ref, {
+            completedByTeamIds: [...task.completedByTeamIds, teamId],
+            updatedAt: Timestamp.now(),
+          });
+
+          // Update team's completed tasks
+          const teamRef = db.collection('teams').doc(teamId);
+          batch.update(teamRef, {
+            completedTaskIds: FieldValue.arrayUnion(taskDoc.id) as any,
+            score: FieldValue.increment(task.points) as any,
+            updatedAt: Timestamp.now(),
+          });
+
+          completedTasks.push({
+            taskId: taskDoc.id,
+            teamId,
+            skill: skill.toLowerCase(),
+            gained: skillGain,
+            required: amount,
+          });
+        }
+      });
+    }
+
+    if (completedTasks.length > 0) {
+      await batch.commit();
+    }
+
+    res.json({
+      success: true,
+      data: {
+        message: `Checked ${tasksSnapshot.size} XP tasks, auto-completed ${completedTasks.length}`,
+        completedTasks,
       },
     });
   } catch (error) {

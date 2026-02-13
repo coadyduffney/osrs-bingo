@@ -167,6 +167,11 @@ export interface Task {
   points: number;
   position: number;
   completedByTeamIds: string[];
+  isXPTask?: boolean;
+  xpRequirement?: {
+    skill: string;
+    amount: number;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -370,6 +375,16 @@ export const trackingApi = {
         };
       }>;
     }>>(`/api/tracking/${eventId}/progress`),
-};
+  checkXPTasks: (eventId: string) =>
+    apiClient.post<ApiResponse<{
+      message: string;
+      completedTasks: Array<{
+        taskId: string;
+        teamId: string;
+        skill: string;
+        gained: number;
+        required: number;
+      }>;
+    }>>(`/api/tracking/${eventId}/check-xp-tasks`),};
 
 export default apiClient;

@@ -74,8 +74,12 @@ router.get('/:id/completions', asyncHandler(async (req: Request, res: Response) 
 // Create task (requires auth and event creator)
 router.post('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
   try {
-    const { eventId, title, description, points, position } =
-      createTaskSchema.parse(req.body);
+    const { eventId, title, description, points, position, isXPTask, xpRequirement } = req.body;
+
+    // Basic validation
+    if (!eventId || !title || points === undefined || position === undefined) {
+      throw new ApiErrorClass(400, 'Missing required fields');
+    }
 
     // Check if user is the event creator
     const event = await eventRepo.findById(eventId);
@@ -96,6 +100,8 @@ router.post('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Resp
       row: 0, // Will be calculated in repository
       col: 0, // Will be calculated in repository
       verificationRequired: false,
+      isXPTask: isXPTask || false,
+      xpRequirement: xpRequirement || null,
     });
 
     res.status(201).json({
