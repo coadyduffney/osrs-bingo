@@ -16,7 +16,6 @@ import { Team, User, tasksApi } from '../services/api';
 interface LeaderboardProps {
   teams: Team[];
   members: Map<string, User[]>; // teamId -> array of users
-  eventId: string;
 }
 
 interface LeaderboardEntry {
@@ -38,7 +37,7 @@ interface TaskCompletion {
   points: number;
 }
 
-const Leaderboard = memo(function Leaderboard({ teams, members, eventId }: LeaderboardProps) {
+const Leaderboard = memo(function Leaderboard({ teams, members }: LeaderboardProps) {
   const [teamFilter, setTeamFilter] = useState<string>('all');
   const [completions, setCompletions] = useState<TaskCompletion[]>([]);
 
