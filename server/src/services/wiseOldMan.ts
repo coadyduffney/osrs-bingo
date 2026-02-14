@@ -112,7 +112,9 @@ export class WiseOldManService {
       });
       
       // WOM API returns the group wrapped in a 'group' property
-      return response.data.group || response.data;
+      const group = response.data.group || response.data;
+      console.log(`✅ Group created successfully: ID=${group.id}, Name=${group.name}`);
+      return group;
     } catch (error: any) {
       console.error('Failed to create group:', error.response?.data || error.message);
       return null;
@@ -125,10 +127,16 @@ export class WiseOldManService {
    */
   async updateGroup(groupId: number): Promise<{ message: string; count: number } | null> {
     try {
+      console.log(`📡 Calling WOM API: POST /groups/${groupId}/update-all`);
       const response = await axiosInstance.post(`/groups/${groupId}/update-all`);
+      console.log(`✅ WOM Response:`, response.data);
       return response.data;
     } catch (error: any) {
-      console.error('Failed to update group:', error.response?.data || error.message);
+      const errorMsg = error.response?.data || error.message;
+      console.error(`❌ Failed to update group ${groupId}:`, errorMsg);
+      if (error.response?.status === 429) {
+        console.error('⚠️  Rate limited even with group update! This should not happen.');
+      }
       return null;
     }
   }
@@ -274,11 +282,13 @@ export class WiseOldManService {
     // If we have a group ID, use the efficient batch update
     if (groupId) {
       console.log(`🔄 Updating all ${usernames.length} players via group ${groupId}...`);
+      console.log(`   Players: ${usernames.join(', ')}`);
       const result = await this.updateGroup(groupId);
       if (result) {
         console.log(`✅ Updated ${result.count} players in a single request`);
+        return;
       } else {
-        console.warn('Group update failed, falling back to individual updates');
+        console.warn('⚠️  Group update failed, falling back to individual updates');
         await this._updatePlayersIndividually(usernames);
       }
       return;
