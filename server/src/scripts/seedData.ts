@@ -1,4 +1,4 @@
-import { db } from '../config/firebase';
+import { db } from '../config/firebase.js';
 import { Timestamp } from 'firebase-admin/firestore';
 import bcrypt from 'bcrypt';
 

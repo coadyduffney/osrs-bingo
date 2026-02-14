@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { db } from '../config/firebase';
-import { authMiddleware } from '../middleware/auth';
-import { WiseOldManService } from '../services/wiseOldMan';
+import { db } from '../config/firebase.js';
+import { authMiddleware } from '../middleware/auth.js';
+import { WiseOldManService } from '../services/wiseOldMan.js';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 
 const router = Router();
