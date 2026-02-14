@@ -861,6 +861,18 @@ function EventView() {
               >
                 {event.status}
               </Chip>
+              {event.refreshSchedule && (
+                <Chip 
+                  variant="outlined" 
+                  startDecorator="⏰"
+                  sx={{ fontWeight: 600 }}
+                >
+                  {nextRunTime 
+                    ? `Next: ${new Date(nextRunTime).toLocaleTimeString()}`
+                    : `Every ${getCronDescription(event.refreshSchedule)}`
+                  }
+                </Chip>
+              )}
               {isEventCreator && (
                 <Stack direction="row" spacing={1}>
                   {event.status === 'draft' && (
@@ -915,18 +927,6 @@ function EventView() {
                     >
                       ⏰ Schedule On
                     </Button>
-                  )}
-                  {event.refreshSchedule && (
-                    <Chip 
-                      variant="outlined" 
-                      startDecorator="⏰"
-                      sx={{ fontWeight: 600 }}
-                    >
-                      {nextRunTime 
-                        ? `Next: ${new Date(nextRunTime).toLocaleTimeString()}`
-                        : `Every ${getCronDescription(event.refreshSchedule)}`
-                      }
-                    </Chip>
                   )}
                   <Button
                     color="danger"
