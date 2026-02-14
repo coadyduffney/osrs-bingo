@@ -43,18 +43,26 @@ router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
 router.get('/:id/completions', asyncHandler(async (req: Request, res: Response) => {
   const completions = await taskCompletionRepo.findByTask(req.params.id);
 
-  // Enrich completions with user information
-  const enrichedCompletions = await Promise.all(
-    completions.map(async (completion) => {
-      const user = await userRepo.findById(completion.completedBy);
-      return {
-        ...completion,
-        completedByUsername: user?.username || 'Unknown User',
-        completedByDisplayName:
-          user?.displayName || user?.username || 'Unknown User',
-      };
-    }),
+  // Batch fetch all users at once instead of N+1 queries
+  const uniqueUserIds = [...new Set(completions.map(c => c.completedBy))];
+  const users = await Promise.all(
+    uniqueUserIds.map(id => userRepo.findById(id))
   );
+  
+  const userMap = new Map(
+    users.filter(u => u !== null).map(u => [u!.id, u!])
+  );
+
+  // Enrich completions with user information
+  const enrichedCompletions = completions.map(completion => {
+    const user = userMap.get(completion.completedBy);
+    return {
+      ...completion,
+      completedByUsername: user?.username || 'Unknown User',
+      completedByDisplayName:
+        user?.displayName || user?.username || 'Unknown User',
+    };
+  });
 
   res.json({
     success: true,

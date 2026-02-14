@@ -225,7 +225,7 @@ function EventView() {
     joinEvent(id);
 
     // Listen for task completions
-    const handleTaskCompleted = async (data: {
+    const handleTaskCompleted = (data: {
       task: Task;
       teamId: string;
     }) => {
@@ -235,16 +235,6 @@ function EventView() {
       setTasks((prev) =>
         prev.map((t) => (t.id === data.task.id ? data.task : t)),
       );
-
-      // Refresh teams to update scores
-      try {
-        const teamsResponse = await teamsApi.getByEvent(id);
-        if (teamsResponse.success) {
-          setTeams(teamsResponse.data);
-        }
-      } catch (err) {
-        console.error('Failed to refresh teams:', err);
-      }
 
       // Show notification
       const completingTeam = teams.find((t) => t.id === data.teamId);
@@ -483,24 +473,26 @@ function EventView() {
     }
   };
 
-  const handleTaskClick = async (position: number, task?: Task) => {
+  const handleTaskClick = useCallback(async (position: number, task?: Task) => {
     if (task) {
       setSelectedTask(task);
       setShowCompleteTaskModal(true);
 
-      // Fetch task completions to show who completed it
-      setLoadingCompletions(true);
-      try {
-        const response = await tasksApi.getCompletions(task.id);
-        if (response.success) {
-          setTaskCompletions(response.data);
+      // Defer loading completions until after modal is visible
+      setTimeout(async () => {
+        setLoadingCompletions(true);
+        try {
+          const response = await tasksApi.getCompletions(task.id);
+          if (response.success) {
+            setTaskCompletions(response.data);
+          }
+        } catch (err) {
+          console.error('Failed to load task completions:', err);
+          setTaskCompletions([]);
+        } finally {
+          setLoadingCompletions(false);
         }
-      } catch (err) {
-        console.error('Failed to load task completions:', err);
-        setTaskCompletions([]);
-      } finally {
-        setLoadingCompletions(false);
-      }
+      }, 0);
     } else if (isEventCreator) {
       // Event creator can add a task to empty position
       setSelectedPosition(position);
@@ -516,7 +508,7 @@ function EventView() {
       setTaskToEdit(null);
       setShowAddTaskModal(true);
     }
-  };
+  }, [isEventCreator]);
 
   const handleCompleteTask = async () => {
     if (!selectedTask || !event) return;
@@ -584,12 +576,17 @@ function EventView() {
 
         setTasks(updatedTasks);
 
-        // Refresh teams to update scores
-        const teamsResponse = await teamsApi.getByEvent(event!.id);
-        if (teamsResponse.success) {
-          const updatedTeams = teamsResponse.data;
-          setTeams(updatedTeams);
-        }
+        // Update teams score locally instead of refetching
+        setTeams(prevTeams => prevTeams.map(t => {
+          if (t.id === userTeam.id) {
+            return {
+              ...t,
+              score: t.score + selectedTask.points,
+              completedTaskIds: [...t.completedTaskIds, selectedTask.id]
+            };
+          }
+          return t;
+        }));
 
         // Reset form
         setShowCompleteTaskModal(false);

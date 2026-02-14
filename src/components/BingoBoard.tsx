@@ -69,11 +69,13 @@ const BingoBoard = memo(function BingoBoard({
     };
   }), [size, taskMap, teamMap, userTeamId]);
 
-  const handleCellClick = (cell: (typeof cells)[0]) => {
-    if (onCellClick) {
-      onCellClick(cell.position, cell.task);
-    }
-  };
+  const handleCellClick = useMemo(() => {
+    return (cell: (typeof cells)[0]) => {
+      if (onCellClick) {
+        onCellClick(cell.position, cell.task);
+      }
+    };
+  }, [onCellClick]);
 
   return (
     <Box
@@ -109,12 +111,12 @@ const BingoBoard = memo(function BingoBoard({
               paddingBottom: '100%',
               position: 'relative',
               cursor: onCellClick ? 'pointer' : 'default',
-              transition: 'all 0.2s',
+              transition: 'transform 0.15s ease-out, box-shadow 0.15s ease-out',
               overflow: 'hidden',
+              willChange: onCellClick ? 'transform' : 'auto',
               '&:hover': onCellClick
                 ? {
                     transform: 'scale(1.05)',
-                    borderColor: 'primary.500',
                     boxShadow: 'md',
                     zIndex: 10,
                   }
