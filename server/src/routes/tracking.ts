@@ -113,9 +113,10 @@ router.post('/:eventId/start', authMiddleware, async (req: Request, res: Respons
 
     console.log(`📋 Starting tracking for ${membersWithRSN.length} players...`);
 
-    // Update players individually with delays to avoid rate limiting
-    const usernames = membersWithRSN.map((m) => m.rsn);
-    console.log(`🔄 Updating ${usernames.length} players individually...`);
+    // Update players individually with delays to avoid rate limiting - deduplicate RSNs first
+    const allUsernames = membersWithRSN.map((m) => m.rsn);
+    const usernames = [...new Set(allUsernames)]; // Remove duplicates
+    console.log(`🔄 Updating ${usernames.length} unique players (from ${allUsernames.length} entries) individually...`);
     
     const DELAY_MS = 3500; // 3.5 seconds between each update
     for (let i = 0; i < usernames.length; i++) {
@@ -227,9 +228,10 @@ router.post('/:eventId/end', authMiddleware, async (req: Request, res: Response,
       .where('snapshotType', '==', 'baseline')
       .get();
 
-    // Update players individually with delays for final snapshot
-    const usernames = baselineSnapshots.docs.map((doc) => doc.data().rsn);
-    console.log(`🔄 Updating ${usernames.length} players individually for final snapshot...`);
+    // Update players individually with delays for final snapshot - deduplicate RSNs first
+    const allUsernames = baselineSnapshots.docs.map((doc) => doc.data().rsn);
+    const usernames = [...new Set(allUsernames)]; // Remove duplicates
+    console.log(`🔄 Updating ${usernames.length} unique players (from ${allUsernames.length} snapshots) individually for final snapshot...`);
     
     const DELAY_MS = 3500;
     for (let i = 0; i < usernames.length; i++) {
@@ -250,12 +252,20 @@ router.post('/:eventId/end', authMiddleware, async (req: Request, res: Response,
     // Wait for WOM to process
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    // Create final current snapshots
+    // Create final current snapshots - deduplicate by RSN
     const batch = db.batch();
     const now = Timestamp.now();
+    const processedRSNs = new Set<string>();
 
     for (const doc of baselineSnapshots.docs) {
       const data = doc.data();
+      
+      // Skip if we already processed this RSN
+      if (processedRSNs.has(data.rsn)) {
+        continue;
+      }
+      processedRSNs.add(data.rsn);
+      
       try {
         const snapshot = await womService.getLatestSnapshot(data.rsn);
 
@@ -339,9 +349,10 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
     });
     await deleteBatch.commit();
 
-    // Update players individually with delays
-    const usernames = baselineSnapshots.docs.map((doc) => doc.data().rsn);
-    console.log(`🔄 Refreshing ${usernames.length} players individually...`);
+    // Update players individually with delays - deduplicate RSNs first
+    const allUsernames = baselineSnapshots.docs.map((doc) => doc.data().rsn);
+    const usernames = [...new Set(allUsernames)]; // Remove duplicates
+    console.log(`🔄 Refreshing ${usernames.length} unique players (from ${allUsernames.length} snapshots) individually...`);
     
     const DELAY_MS = 3500;
     for (let i = 0; i < usernames.length; i++) {
@@ -362,12 +373,20 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
     // Wait for WOM to process
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    // Create new current snapshots
+    // Create new current snapshots - deduplicate by RSN
     const batch = db.batch();
     const now = Timestamp.now();
+    const processedRSNs = new Set<string>();
 
     for (const doc of baselineSnapshots.docs) {
       const data = doc.data();
+      
+      // Skip if we already processed this RSN
+      if (processedRSNs.has(data.rsn)) {
+        continue;
+      }
+      processedRSNs.add(data.rsn);
+      
       try {
         const snapshot = await womService.getLatestSnapshot(data.rsn);
 
@@ -398,7 +417,7 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
       success: true,
       data: {
         message: 'Snapshots refreshed',
-        playersUpdated: baselineSnapshots.size,
+        playersUpdated: processedRSNs.size,
       },
     });
   } catch (error) {
