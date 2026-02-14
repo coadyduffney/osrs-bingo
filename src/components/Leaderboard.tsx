@@ -1,4 +1,4 @@
-import { useState, useMemo, memo } from 'react';
+import { useState, useMemo, memo, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -11,11 +11,12 @@ import {
 } from '@mui/joy';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import { Team, User } from '../services/api';
+import { Team, User, tasksApi } from '../services/api';
 
 interface LeaderboardProps {
   teams: Team[];
   members: Map<string, User[]>; // teamId -> array of users
+  eventId: string;
 }
 
 interface LeaderboardEntry {
@@ -25,13 +26,59 @@ interface LeaderboardEntry {
   avatarUrl?: string;
   teamId: string;
   teamName: string;
-  score: number;
+  teamScore: number;
+  individualScore: number;
   tasksCompleted: number;
   isCaptain: boolean;
 }
 
-const Leaderboard = memo(function Leaderboard({ teams, members }: LeaderboardProps) {
+interface TaskCompletion {
+  taskId: string;
+  completedBy: string;
+  points: number;
+}
+
+const Leaderboard = memo(function Leaderboard({ teams, members, eventId }: LeaderboardProps) {
   const [teamFilter, setTeamFilter] = useState<string>('all');
+  const [completions, setCompletions] = useState<TaskCompletion[]>([]);
+
+  // Fetch all task completions for the event
+  useEffect(() => {
+    const fetchCompletions = async () => {
+      try {
+        // Get all teams' tasks
+        const allCompletions: TaskCompletion[] = [];
+        
+        for (const team of teams) {
+          for (const taskId of team.completedTaskIds) {
+            const response = await tasksApi.getCompletions(taskId);
+            if (response.success) {
+              allCompletions.push(...response.data.map((c: any) => ({
+                taskId,
+                completedBy: c.completedBy,
+                points: c.points,
+              })));
+            }
+          }
+        }
+        
+        setCompletions(allCompletions);
+      } catch (err) {
+        console.error('Error fetching completions for leaderboard:', err);
+      }
+    };
+    
+    if (teams.length > 0) {
+      fetchCompletions();
+    }
+  }, [teams]);
+
+  // Calculate individual score (sum of points from tasks they completed)
+  const getIndividualScore = (userId: string): number => {
+    return completions
+      .filter(c => c.completedBy === userId)
+      .reduce((sum, c) => sum + c.points, 0);
+  };
 
   // Build leaderboard data
   const leaderboardData = useMemo(() => {
@@ -40,6 +87,7 @@ const Leaderboard = memo(function Leaderboard({ teams, members }: LeaderboardPro
     teams.forEach((team) => {
       const teamMembers = members.get(team.id) || [];
       teamMembers.forEach((member) => {
+        const individualScore = getIndividualScore(member.id);
         entries.push({
           userId: member.id,
           username: member.username,
@@ -47,7 +95,8 @@ const Leaderboard = memo(function Leaderboard({ teams, members }: LeaderboardPro
           avatarUrl: member.avatarUrl,
           teamId: team.id,
           teamName: team.name,
-          score: team.score,
+          teamScore: team.score,
+          individualScore,
           tasksCompleted: team.completedTaskIds.length,
           isCaptain: member.id === team.captainId,
         });
@@ -60,19 +109,19 @@ const Leaderboard = memo(function Leaderboard({ teams, members }: LeaderboardPro
       filtered = entries.filter((entry) => entry.teamId === teamFilter);
     }
 
-    // Sort by score (highest first), then by tasks completed, then by name
+    // Sort by individual score (highest first), then team score, then by name
     return filtered.sort((a, b) => {
-      if (b.score !== a.score) {
-        return b.score - a.score;
+      if (b.individualScore !== a.individualScore) {
+        return b.individualScore - a.individualScore;
       }
-      if (b.tasksCompleted !== a.tasksCompleted) {
-        return b.tasksCompleted - a.tasksCompleted;
+      if (b.teamScore !== a.teamScore) {
+        return b.teamScore - a.teamScore;
       }
       return (a.displayName || a.username).localeCompare(
         b.displayName || b.username
       );
     });
-  }, [teams, members, teamFilter]);
+  }, [teams, members, teamFilter, completions]);
 
   // Get unique team count for each player (useful for stats)
   const topThree = leaderboardData.slice(0, 3);
@@ -142,8 +191,9 @@ const Leaderboard = memo(function Leaderboard({ teams, members }: LeaderboardPro
               <th style={{ width: 60, textAlign: 'center' }}>Rank</th>
               <th>Player</th>
               <th>Team</th>
-              <th style={{ width: 120, textAlign: 'center' }}>Score</th>
-              <th style={{ width: 120, textAlign: 'center' }}>
+              <th style={{ width: 100, textAlign: 'center' }}>Individual</th>
+              <th style={{ width: 100, textAlign: 'center' }}>Team Score</th>
+              <th style={{ width: 100, textAlign: 'center' }}>
                 Tasks
               </th>
             </tr>
@@ -151,7 +201,7 @@ const Leaderboard = memo(function Leaderboard({ teams, members }: LeaderboardPro
           <tbody>
             {leaderboardData.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
                   <Typography level="body-md" sx={{ color: 'text.tertiary' }}>
                     No players yet. Join a team to appear on the leaderboard!
                   </Typography>
@@ -231,7 +281,7 @@ const Leaderboard = memo(function Leaderboard({ teams, members }: LeaderboardPro
                       </Chip>
                     </td>
 
-                    {/* Score */}
+                    {/* Individual Score */}
                     <td style={{ textAlign: 'center' }}>
                       <Typography
                         level="title-md"
@@ -240,7 +290,19 @@ const Leaderboard = memo(function Leaderboard({ teams, members }: LeaderboardPro
                           fontWeight: isTopThree ? 'bold' : 'normal',
                         }}
                       >
-                        {entry.score}
+                        {entry.individualScore}
+                      </Typography>
+                    </td>
+
+                    {/* Team Score */}
+                    <td style={{ textAlign: 'center' }}>
+                      <Typography
+                        level="body-md"
+                        sx={{
+                          color: 'text.secondary',
+                        }}
+                      >
+                        {entry.teamScore}
                       </Typography>
                     </td>
 
@@ -324,10 +386,10 @@ const Leaderboard = memo(function Leaderboard({ teams, members }: LeaderboardPro
                     level="h4"
                     sx={{ mt: 1, color: textColor, fontWeight: 'bold' }}
                   >
-                    {entry.score} pts
+                    {entry.individualScore} pts
                   </Typography>
                   <Typography level="body-xs" sx={{ color: 'text.tertiary' }}>
-                    {entry.tasksCompleted} tasks
+                    Team: {entry.teamScore} pts • {entry.tasksCompleted} tasks
                   </Typography>
                 </Sheet>
               );

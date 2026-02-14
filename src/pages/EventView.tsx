@@ -1030,7 +1030,7 @@ function EventView() {
         <TabPanel value={2} sx={{ p: 0, pt: 2 }}>
           <Card>
             <CardContent>
-              <Leaderboard teams={teams} members={teamMembers} />
+              <Leaderboard teams={teams} members={teamMembers} eventId={id!} />
             </CardContent>
           </Card>
         </TabPanel>
