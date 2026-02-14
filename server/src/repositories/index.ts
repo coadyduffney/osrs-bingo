@@ -69,7 +69,10 @@ export class UserRepository {
 
   async findById(id: string): Promise<UserDocument | null> {
     const doc = await this.collection.doc(id).get();
-    return doc.exists ? serializeDocument(doc.data() as UserDocument) : null;
+    if (!doc.exists) return null;
+    
+    const data = doc.data() as UserDocument;
+    return serializeDocument({ ...data, id: doc.id });
   }
 
   async findByUsername(username: string): Promise<UserDocument | null> {
@@ -136,7 +139,10 @@ export class EventRepository {
 
   async findById(id: string): Promise<EventDocument | null> {
     const doc = await this.collection.doc(id).get();
-    return doc.exists ? serializeDocument(doc.data() as EventDocument) : null;
+    if (!doc.exists) return null;
+    
+    const data = doc.data() as EventDocument;
+    return serializeDocument({ ...data, id: doc.id });
   }
 
   async findAll(limit = 50): Promise<EventDocument[]> {
@@ -269,7 +275,10 @@ export class TeamRepository {
 
   async findById(id: string): Promise<TeamDocument | null> {
     const doc = await this.collection.doc(id).get();
-    return doc.exists ? serializeDocument(doc.data() as TeamDocument) : null;
+    if (!doc.exists) return null;
+    
+    const data = doc.data() as TeamDocument;
+    return serializeDocument({ ...data, id: doc.id });
   }
 
   async findByEvent(eventId: string): Promise<TeamDocument[]> {
@@ -400,7 +409,11 @@ export class TaskRepository {
 
   async findById(id: string): Promise<TaskDocument | null> {
     const doc = await this.collection.doc(id).get();
-    return doc.exists ? serializeDocument(doc.data() as TaskDocument) : null;
+    if (!doc.exists) return null;
+    
+    const data = doc.data() as TaskDocument;
+    // Ensure ID is set from document reference if not in data
+    return serializeDocument({ ...data, id: doc.id });
   }
 
   async findByEvent(eventId: string): Promise<TaskDocument[]> {
@@ -530,7 +543,10 @@ export class TaskCompletionRepository {
 
   async findById(id: string): Promise<TaskCompletionDocument | null> {
     const doc = await this.collection.doc(id).get();
-    return doc.exists ? serializeDocument(doc.data() as TaskCompletionDocument) : null;
+    if (!doc.exists) return null;
+    
+    const data = doc.data() as TaskCompletionDocument;
+    return serializeDocument({ ...data, id: doc.id });
   }
 
   async findByTask(taskId: string): Promise<TaskCompletionDocument[]> {
