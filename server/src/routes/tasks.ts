@@ -162,7 +162,9 @@ router.post(
 
 // Update task (requires auth and event creator)
 router.put('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
+  console.log(`[Tasks PUT] Looking for task with ID: ${req.params.id}`);
   const task = await taskRepo.findById(req.params.id);
+  console.log(`[Tasks PUT] Task found:`, task ? `Yes (${task.id})` : 'No');
 
   if (!task) {
     throw new ApiErrorClass(404, 'Task not found');
