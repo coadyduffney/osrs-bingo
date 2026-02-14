@@ -6,6 +6,7 @@ import {
   Sheet,
   Chip,
   Avatar,
+  CircularProgress,
 } from '@mui/joy';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import { Team, User, tasksApi } from '../services/api';
@@ -44,11 +45,13 @@ interface TaskCompletion {
 
 const Leaderboard = memo(function Leaderboard({ teams, members }: LeaderboardProps) {
   const [completions, setCompletions] = useState<TaskCompletion[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Fetch all task completions for the event
   useEffect(() => {
     const fetchCompletions = async () => {
       try {
+        setLoading(true);
         // Get all teams' tasks
         const allCompletions: TaskCompletion[] = [];
         
@@ -68,11 +71,15 @@ const Leaderboard = memo(function Leaderboard({ teams, members }: LeaderboardPro
         setCompletions(allCompletions);
       } catch (err) {
         console.error('Error fetching completions for leaderboard:', err);
+      } finally {
+        setLoading(false);
       }
     };
     
     if (teams.length > 0) {
       fetchCompletions();
+    } else {
+      setLoading(false);
     }
   }, [teams]);
 
@@ -317,7 +324,13 @@ const Leaderboard = memo(function Leaderboard({ teams, members }: LeaderboardPro
               </tr>
             </thead>
             <tbody>
-              {individualLeaderboard.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>
+                    <CircularProgress />
+                  </td>
+                </tr>
+              ) : individualLeaderboard.length === 0 ? (
                 <tr>
                   <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>
                     <Typography level="body-md" sx={{ color: 'text.tertiary' }}>
