@@ -113,17 +113,30 @@ router.post('/:eventId/start', authMiddleware, async (req: Request, res: Respons
 
     console.log(`📋 Starting tracking for ${membersWithRSN.length} players...`);
 
-    // Update all players via existing WiseOldMan group (single API call)
+    // Update players individually with delays to avoid rate limiting
     const usernames = membersWithRSN.map((m) => m.rsn);
-    console.log(`🔄 Updating ${usernames.length} players via group ${WOM_GROUP_ID}...`);
+    console.log(`🔄 Updating ${usernames.length} players individually...`);
     
-    const updateResult = await womService.updateGroup(WOM_GROUP_ID, WOM_VERIFICATION_CODE);
-    if (!updateResult) {
-      console.warn('⚠️  Group update failed, continuing with stale data');
+    const DELAY_MS = 3500; // 3.5 seconds between each update
+    for (let i = 0; i < usernames.length; i++) {
+      const username = usernames[i];
+      try {
+        console.log(`  Updating ${username} (${i + 1}/${usernames.length})...`);
+        await womService.updatePlayer(username);
+        console.log(`  ✅ Updated ${username}`);
+        
+        // Wait before next update (except for last player)
+        if (i < usernames.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
+        }
+      } catch (error: any) {
+        console.error(`  ❌ Failed to update ${username}:`, error.message);
+        // Continue with other players
+      }
     }
 
-    // Wait for WOM to process the updates
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    // Wait a bit for WOM to process the final update
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Create baseline snapshots for all members
     const batch = db.batch();
@@ -207,19 +220,37 @@ router.post('/:eventId/end', authMiddleware, async (req: Request, res: Response,
       return res.status(400).json({ error: 'Event tracking not active' });
     }
 
-    // Update all players one final time using the group
-    console.log(`🔄 Updating group ${WOM_GROUP_ID} for final snapshot...`);
-    await womService.updateGroup(WOM_GROUP_ID, WOM_VERIFICATION_CODE);
-    // Wait for WOM to process
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-
-    // Create final current snapshots
+    // Get baseline snapshots to know who to update
     const baselineSnapshots = await db
       .collection('playerSnapshots')
       .where('eventId', '==', eventId)
       .where('snapshotType', '==', 'baseline')
       .get();
 
+    // Update players individually with delays for final snapshot
+    const usernames = baselineSnapshots.docs.map((doc) => doc.data().rsn);
+    console.log(`🔄 Updating ${usernames.length} players individually for final snapshot...`);
+    
+    const DELAY_MS = 3500;
+    for (let i = 0; i < usernames.length; i++) {
+      const username = usernames[i];
+      try {
+        console.log(`  Updating ${username} (${i + 1}/${usernames.length})...`);
+        await womService.updatePlayer(username);
+        console.log(`  ✅ Updated ${username}`);
+        
+        if (i < usernames.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
+        }
+      } catch (error: any) {
+        console.error(`  ❌ Failed to update ${username}:`, error.message);
+      }
+    }
+    
+    // Wait for WOM to process
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Create final current snapshots
     const batch = db.batch();
     const now = Timestamp.now();
 
@@ -308,13 +339,28 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
     });
     await deleteBatch.commit();
 
-    // Update players in WOM using the existing group (much faster!)
+    // Update players individually with delays
     const usernames = baselineSnapshots.docs.map((doc) => doc.data().rsn);
-    console.log(`🔄 Refreshing ${usernames.length} players via group ${WOM_GROUP_ID}...`);
-    await womService.updateGroup(WOM_GROUP_ID, WOM_VERIFICATION_CODE);
+    console.log(`🔄 Refreshing ${usernames.length} players individually...`);
+    
+    const DELAY_MS = 3500;
+    for (let i = 0; i < usernames.length; i++) {
+      const username = usernames[i];
+      try {
+        console.log(`  Updating ${username} (${i + 1}/${usernames.length})...`);
+        await womService.updatePlayer(username);
+        console.log(`  ✅ Updated ${username}`);
+        
+        if (i < usernames.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
+        }
+      } catch (error: any) {
+        console.error(`  ❌ Failed to update ${username}:`, error.message);
+      }
+    }
 
     // Wait for WOM to process
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Create new current snapshots
     const batch = db.batch();
