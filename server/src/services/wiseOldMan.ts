@@ -101,8 +101,11 @@ export class WiseOldManService {
    */
   async createGroup(name: string, members: string[]): Promise<WOMGroup | null> {
     try {
+      // WOM has a 30 character limit for group names
+      const truncatedName = name.length > 30 ? name.substring(0, 30) : name;
+      
       const response = await axiosInstance.post('/groups', {
-        name,
+        name: truncatedName,
         clanChat: undefined,
         description: `OSRS Bingo Event: ${name}`,
         members: members.map(username => ({ username, role: 'member' }))
