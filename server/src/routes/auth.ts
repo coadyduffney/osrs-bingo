@@ -5,9 +5,15 @@ import { z } from 'zod';
 import { ApiErrorClass, asyncHandler } from '../middleware/errorHandler.js';
 import { UserRepository } from '../repositories/index.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { WiseOldManService } from '../services/wiseOldMan.js';
 
 const router = Router();
 const userRepo = new UserRepository();
+const womService = new WiseOldManService();
+
+// WiseOldMan group configuration
+const WOM_GROUP_ID = parseInt(process.env.WOM_GROUP_ID || '22343');
+const WOM_VERIFICATION_CODE = process.env.WOM_VERIFICATION_CODE || '';
 
 // Validation schemas
 const registerSchema = z.object({
@@ -45,6 +51,13 @@ router.post('/register', asyncHandler(async (req: Request, res: Response) => {
       passwordHash,
       rsn,
     });
+
+    // Add user to WiseOldMan group
+    if (WOM_VERIFICATION_CODE) {
+      await womService.addMembersToGroup(WOM_GROUP_ID, WOM_VERIFICATION_CODE, [
+        { username: rsn, role: 'member' }
+      ]);
+    }
 
     // Generate token
     const token = jwt.sign(

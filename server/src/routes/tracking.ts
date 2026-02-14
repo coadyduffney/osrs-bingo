@@ -7,8 +7,8 @@ import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 const router = Router();
 const womService = new WiseOldManService();
 
-// Use existing WiseOldMan group for all events
-const WOM_GROUP_ID = parseInt(process.env.WOM_GROUP_ID || '22342');
+// Use existing WiseOldMan group for all events (Bibzys Bingo)
+const WOM_GROUP_ID = parseInt(process.env.WOM_GROUP_ID || '22343');
 const WOM_VERIFICATION_CODE = process.env.WOM_VERIFICATION_CODE || '';
 
 // Start event tracking - snapshots all team members' XP

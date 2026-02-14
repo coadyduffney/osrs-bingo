@@ -209,6 +209,25 @@ export class WiseOldManService {
   }
 
   /**
+   * Add members to a group
+   */
+  async addMembersToGroup(groupId: number, verificationCode: string, members: Array<{ username: string; role: string }>): Promise<boolean> {
+    try {
+      console.log(`👥 Adding ${members.length} member(s) to group ${groupId}...`);
+      await axiosInstance.post(`/groups/${groupId}/members`, {
+        verificationCode,
+        members
+      });
+      console.log(`✅ Successfully added members to group`);
+      return true;
+    } catch (error: any) {
+      const errorMsg = error.response?.data || error.message;
+      console.error(`❌ Failed to add members to group ${groupId}:`, errorMsg);
+      return false;
+    }
+  }
+
+  /**
    * Get group details including verification code
    */
   async getGroup(groupId: number): Promise<WOMGroup | null> {
