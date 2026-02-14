@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { ApiErrorClass, asyncHandler } from '../middleware/errorHandler.js';
 import { EventRepository } from '../repositories/index.js';
 import { authMiddleware } from '../middleware/auth.js';
-import { getNextRunTime } from '../services/scheduler.js';
+import { getNextRunTime, reloadScheduledJobs } from '../services/scheduler.js';
 
 const router = Router();
 const eventRepo = new EventRepository();
@@ -245,6 +245,9 @@ router.post('/:id/schedule', authMiddleware, asyncHandler(async (req: Request, r
   });
 
   console.log(`📅 Schedule updated for event ${req.params.id}: ${cronExpression || 'disabled'}`);
+
+  // Reload scheduler to apply changes immediately
+  reloadScheduledJobs();
 
   const updatedEvent = await eventRepo.findById(req.params.id);
 

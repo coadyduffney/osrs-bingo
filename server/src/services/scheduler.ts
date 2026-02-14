@@ -67,11 +67,27 @@ async function loadScheduledJobs() {
           refreshEventSnapshots(eventId);
         });
         scheduledJobs.push({ eventId, task });
+      } else {
+        // Check if cron expression changed - if so, recreate the job
+        // We can't easily compare, so we'll check the next run time
+        // For simplicity, just log that we found existing job
+        console.log(`📅 Job already exists for event ${eventId}, schedule: ${cronExpression}`);
       }
     }
   } catch (error) {
     console.error('❌ Error loading scheduled jobs:', error);
   }
+}
+
+export function reloadScheduledJobs() {
+  console.log('🔄 Reloading scheduled jobs...');
+  // Stop all existing jobs
+  for (const job of scheduledJobs) {
+    job.task.stop();
+  }
+  scheduledJobs.length = 0;
+  // Reload from database
+  loadScheduledJobs();
 }
 
 export async function refreshEventSnapshots(eventId: string): Promise<{ success: boolean; playersUpdated?: number; error?: string }> {
