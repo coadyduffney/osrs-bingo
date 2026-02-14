@@ -132,6 +132,31 @@ function EventView() {
       xpAmount: 0,
     });
   }, []);
+  
+  // Memoize complete task modal close handler
+  const handleCloseCompleteModal = useCallback(() => {
+    setShowCompleteTaskModal(false);
+    setSelectedTask(null);
+    setTaskCompletions([]);
+    setVerificationImage(null);
+    setVerificationNote('');
+    setUploadProgress(undefined);
+  }, []);
+  
+  // Memoize verification note change handler
+  const handleVerificationNoteChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setVerificationNote(e.target.value);
+  }, []);
+  
+  // Memoize image upload handlers
+  const handleVerificationImageSelect = useCallback((file: File) => {
+    setVerificationImage(file);
+  }, []);
+  
+  const handleVerificationImageRemove = useCallback(() => {
+    setVerificationImage(null);
+    setUploadProgress(undefined);
+  }, []);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -1271,18 +1296,18 @@ function EventView() {
       {/* Task Completion Modal */}
       <Modal
         open={showCompleteTaskModal}
-        onClose={() => {
-          setShowCompleteTaskModal(false);
-          setSelectedTask(null);
-          setTaskCompletions([]);
-        }}
+        onClose={handleCloseCompleteModal}
       >
-        <ModalDialog variant="outlined" sx={{ minWidth: 400 }}>
+        <ModalDialog variant="outlined" sx={{ minWidth: 400, maxWidth: 600 }}>
           <ModalClose />
           <Typography level="h4" component="h2">
             Complete Task
           </Typography>
-          {selectedTask && (
+          {selectedTask && (() => {
+            const isTaskCompletedByUserTeam = userTeam && selectedTask.completedByTeamIds.includes(userTeam.id);
+            const canComplete = userTeam && !isTaskCompletedByUserTeam;
+            
+            return (
             <Box sx={{ mt: 2 }}>
               <Stack spacing={2}>
                 <Box>
@@ -1379,8 +1404,7 @@ function EventView() {
                 </Stack>
 
                 {/* Show YOUR team's completion status prominently */}
-                {userTeam &&
-                  selectedTask.completedByTeamIds.includes(userTeam.id) && (
+                {isTaskCompletedByUserTeam && (
                     <Box>
                       <Alert variant="soft" color="success" size="sm">
                         <Typography level="body-sm" fontWeight="600">
@@ -1455,8 +1479,7 @@ function EventView() {
                   )}
 
                 {/* Show other teams' progress if user's team hasn't completed */}
-                {userTeam &&
-                  !selectedTask.completedByTeamIds.includes(userTeam.id) &&
+                {userTeam && !isTaskCompletedByUserTeam &&
                   selectedTask.completedByTeamIds.length > 0 && (
                     <Alert variant="soft" color="warning" size="sm">
                       <Typography level="body-sm">
@@ -1476,18 +1499,14 @@ function EventView() {
                   )}
 
                 {/* Verification Image Upload */}
-                {userTeam &&
-                  !selectedTask.completedByTeamIds.includes(userTeam.id) && (
+                {canComplete && (
                     <Box>
                       <Typography level="title-sm" sx={{ mb: 1 }}>
                         Verification (Optional)
                       </Typography>
                       <ImageUpload
-                        onFileSelect={(file) => setVerificationImage(file)}
-                        onRemove={() => {
-                          setVerificationImage(null);
-                          setUploadProgress(undefined);
-                        }}
+                        onFileSelect={handleVerificationImageSelect}
+                        onRemove={handleVerificationImageRemove}
                         uploadProgress={uploadProgress}
                         disabled={completing}
                       />
@@ -1496,7 +1515,7 @@ function EventView() {
                         <Textarea
                           placeholder="Add any notes about completing this task..."
                           value={verificationNote}
-                          onChange={(e) => setVerificationNote(e.target.value)}
+                          onChange={handleVerificationNoteChange}
                           minRows={2}
                           disabled={completing}
                         />
@@ -1513,11 +1532,7 @@ function EventView() {
                   <Button
                     variant="outlined"
                     color="neutral"
-                    onClick={() => {
-                      setShowCompleteTaskModal(false);
-                      setSelectedTask(null);
-                      setTaskCompletions([]);
-                    }}
+                    onClick={handleCloseCompleteModal}
                   >
                     Cancel
                   </Button>
@@ -1525,21 +1540,17 @@ function EventView() {
                     color="success"
                     onClick={handleCompleteTask}
                     loading={completing}
-                    disabled={
-                      !userTeam ||
-                      (userTeam &&
-                        selectedTask.completedByTeamIds.includes(userTeam.id))
-                    }
+                    disabled={!canComplete}
                   >
-                    {userTeam &&
-                    selectedTask.completedByTeamIds.includes(userTeam.id)
+                    {isTaskCompletedByUserTeam
                       ? 'Already Completed'
                       : 'Mark Complete'}
                   </Button>
                 </Stack>
               </Stack>
             </Box>
-          )}
+            );
+          })()}
         </ModalDialog>
       </Modal>
 
