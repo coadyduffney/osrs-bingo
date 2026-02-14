@@ -16,37 +16,6 @@ const createEventSchema = z.object({
   boardSize: z.enum(['5', '7', '9', '10']).transform((val) => Number(val) as 5 | 7 | 9 | 10)
 });
 
-// Get next XP refresh time for an event
-router.get('/:id/schedule/next', async (req: Request, res: Response) => {
-  try {
-    const event = await eventRepo.findById(req.params.id);
-    
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found' });
-    }
-
-    if (!event.refreshSchedule) {
-      return res.json({
-        success: true,
-        data: { nextRunTime: null, cronExpression: null }
-      });
-    }
-
-    const nextRunTime = getNextRunTime(event.refreshSchedule);
-
-    return res.json({
-      success: true,
-      data: { 
-        nextRunTime: nextRunTime ? nextRunTime.toISOString() : null,
-        cronExpression: event.refreshSchedule 
-      }
-    });
-  } catch (error) {
-    console.error('Error getting next run time:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
 // Get all events
 router.get('/', asyncHandler(async (_req: Request, res: Response) => {
   const events = await eventRepo.findAll();
@@ -249,6 +218,32 @@ router.post('/:id/schedule', authMiddleware, asyncHandler(async (req: Request, r
   res.json({
     success: true,
     data: updatedEvent
+  });
+});
+
+// Get next XP refresh time for an event
+router.get('/:id/schedule/next', asyncHandler(async (req: Request, res: Response) => {
+  const event = await eventRepo.findById(req.params.id);
+  
+  if (!event) {
+    throw new ApiErrorClass(404, 'Event not found');
+  }
+
+  if (!event.refreshSchedule) {
+    return res.json({
+      success: true,
+      data: { nextRunTime: null, cronExpression: null }
+    });
+  }
+
+  const nextRunTime = getNextRunTime(event.refreshSchedule);
+
+  res.json({
+    success: true,
+    data: { 
+      nextRunTime: nextRunTime ? nextRunTime.toISOString() : null,
+      cronExpression: event.refreshSchedule 
+    }
   });
 }));
 

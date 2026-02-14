@@ -175,6 +175,7 @@ function EventView() {
     cronExpression: '',
   });
   const [savingSchedule, setSavingSchedule] = useState(false);
+  const [nextRunTime, setNextRunTime] = useState<string | null>(null);
 
   // Check if user arrived via join code
   useEffect(() => {
@@ -205,6 +206,12 @@ function EventView() {
 
         if (eventResponse.success) {
           setEvent(eventResponse.data);
+          if (eventResponse.data.refreshSchedule) {
+            const nextResponse = await eventsApi.getNextScheduleTime(id);
+            if (nextResponse.success && nextResponse.data.nextRunTime) {
+              setNextRunTime(nextResponse.data.nextRunTime);
+            }
+          }
         }
         if (teamsResponse.success) {
           setTeams(teamsResponse.data);
@@ -536,6 +543,14 @@ function EventView() {
       const response = await eventsApi.setSchedule(id, cronValue);
       if (response.success) {
         setEvent({ ...event, refreshSchedule: cronValue });
+        if (cronValue) {
+          const nextResponse = await eventsApi.getNextScheduleTime(id);
+          if (nextResponse.success && nextResponse.data.nextRunTime) {
+            setNextRunTime(nextResponse.data.nextRunTime);
+          }
+        } else {
+          setNextRunTime(null);
+        }
         setSnackbar({
           open: true,
           message: cronValue 
@@ -895,6 +910,18 @@ function EventView() {
                     >
                       ⏰ Schedule On
                     </Button>
+                  )}
+                  {event.refreshSchedule && (
+                    <Chip 
+                      variant="outlined" 
+                      startDecorator="⏰"
+                      sx={{ fontWeight: 600 }}
+                    >
+                      {nextRunTime 
+                        ? `Next: ${new Date(nextRunTime).toLocaleTimeString()}`
+                        : `Every ${getCronDescription(event.refreshSchedule)}`
+                      }
+                    </Chip>
                   )}
                   <Button
                     color="danger"

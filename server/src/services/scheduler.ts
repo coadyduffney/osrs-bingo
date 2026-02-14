@@ -1,4 +1,5 @@
 import cron, { ScheduledTask } from 'node-cron';
+import cronParser from 'cron-parser';
 import { db } from '../config/firebase.js';
 import { WiseOldManService } from './wiseOldMan.js';
 import { Timestamp } from 'firebase-admin/firestore';
@@ -187,4 +188,14 @@ export function stopAllJobs() {
 
 export function getScheduledJobs() {
   return scheduledJobs.map((j) => j.eventId);
+}
+
+export function getNextRunTime(cronExpression: string): Date | null {
+  try {
+    const interval = cronParser.parseExpression(cronExpression);
+    return interval.next().toDate();
+  } catch (error) {
+    console.error('Error parsing cron expression:', error);
+    return null;
+  }
 }

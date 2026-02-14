@@ -261,6 +261,9 @@ export const eventsApi = {
 
   setSchedule: (id: string, cronExpression: string | null) =>
     apiClient.post<ApiResponse<Event>>(`/api/events/${id}/schedule`, { cronExpression }),
+
+  getNextScheduleTime: (id: string) =>
+    apiClient.get<ApiResponse<{ nextRunTime: string | null; cronExpression: string | null }>>(`/api/events/${id}/schedule/next`),
 };
 
 // Teams API
