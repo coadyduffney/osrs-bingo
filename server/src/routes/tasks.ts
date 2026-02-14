@@ -15,15 +15,6 @@ const eventRepo = new EventRepository();
 const taskCompletionRepo = new TaskCompletionRepository();
 const userRepo = new UserRepository();
 
-// Validation schema
-const createTaskSchema = z.object({
-  eventId: z.string(),
-  title: z.string().min(3).max(100),
-  description: z.string().max(500).optional(),
-  points: z.number().min(1).max(100),
-  position: z.number().min(0),
-});
-
 // Get tasks for an event
 router.get('/event/:eventId', asyncHandler(async (req: Request, res: Response) => {
   const eventTasks = await taskRepo.findByEvent(req.params.eventId);

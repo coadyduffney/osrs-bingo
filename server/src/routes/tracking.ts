@@ -115,7 +115,7 @@ router.post('/:eventId/start', authMiddleware, async (req: Request, res: Respons
     const updatedEvent = await eventRef.get();
     console.log('Updated event trackingEnabled:', updatedEvent.data()?.trackingEnabled);
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         message: 'Event tracking started',
@@ -125,7 +125,7 @@ router.post('/:eventId/start', authMiddleware, async (req: Request, res: Respons
     });
   } catch (error) {
     console.error('Error starting tracking:', error);
-    next(error);
+    return next(error);
   }
 });
 
@@ -197,12 +197,12 @@ router.post('/:eventId/end', authMiddleware, async (req: Request, res: Response,
 
     await batch.commit();
 
-    res.json({ 
+    return res.json({ 
       success: true,
       data: { message: 'Event tracking ended' },
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -286,7 +286,7 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
 
     await batch.commit();
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         message: 'Snapshots refreshed',
@@ -294,7 +294,7 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
       },
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -368,7 +368,7 @@ router.get('/:eventId/progress', async (req: Request, res: Response, next: NextF
       teamGains.get(teamId).members.push(memberGains);
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         eventId,
@@ -376,7 +376,7 @@ router.get('/:eventId/progress', async (req: Request, res: Response, next: NextF
       },
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -494,7 +494,7 @@ router.post('/:eventId/check-xp-tasks', async (req: Request, res: Response, next
       await batch.commit();
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         message: `Checked ${tasksSnapshot.size} XP tasks, auto-completed ${completedTasks.length}`,
@@ -502,7 +502,7 @@ router.post('/:eventId/check-xp-tasks', async (req: Request, res: Response, next
       },
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 

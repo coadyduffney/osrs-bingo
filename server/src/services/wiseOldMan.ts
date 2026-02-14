@@ -222,8 +222,8 @@ export class WiseOldManService {
       const baseline = baselineSnapshots.get(rsn);
       if (!baseline) continue;
 
-      const currentXP = currentSnapshot.skills[skillName.toLowerCase()] || 0;
-      const baselineXP = baseline.skills[skillName.toLowerCase()] || 0;
+      const currentXP = currentSnapshot.skills[skillName.toLowerCase()]?.experience || 0;
+      const baselineXP = baseline.skills[skillName.toLowerCase()]?.experience || 0;
       const gain = currentXP - baselineXP;
 
       if (gain > 0) {
