@@ -66,9 +66,9 @@ router.post('/:eventId/start', authMiddleware, async (req: Request, res: Respons
     console.log(`📋 Starting tracking for ${membersWithRSN.length} players...`);
 
     // Create a WiseOldMan group for efficient batch updates
+    // Use event ID as group name to ensure uniqueness and avoid name conflicts
     const usernames = membersWithRSN.map((m) => m.rsn);
-    const eventName = eventData?.name || 'Event';
-    const womGroup = await womService.createGroup(`OSRS Bingo - ${eventName}`, usernames);
+    const womGroup = await womService.createGroup(eventId, usernames);
     
     if (!womGroup) {
       return res.status(500).json({
