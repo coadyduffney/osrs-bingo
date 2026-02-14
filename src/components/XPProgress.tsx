@@ -67,11 +67,15 @@ function XPProgress({ eventId, teams }: XPProgressProps) {
     try {
       setLoading(true);
       setError('');
+      console.log('Fetching XP progress for event:', eventId);
       const response = await trackingApi.getProgress(eventId);
+      console.log('XP progress response:', response);
       if (response.success) {
         setProgress(response.data.teams);
+        console.log('Progress teams:', response.data.teams);
       }
     } catch (err) {
+      console.error('Error fetching XP progress:', err);
       setError(err instanceof Error ? err.message : 'Failed to load XP progress');
     } finally {
       setLoading(false);
@@ -81,11 +85,15 @@ function XPProgress({ eventId, teams }: XPProgressProps) {
   const handleRefresh = async () => {
     try {
       setRefreshing(true);
+      console.log('Refreshing snapshots for event:', eventId);
       await trackingApi.refreshSnapshots(eventId);
+      console.log('Snapshots refreshed, fetching new progress...');
       await fetchProgress();
       // Auto-check tasks after refresh
+      console.log('Checking XP tasks...');
       await handleCheckTasks();
     } catch (err) {
+      console.error('Error during refresh:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh snapshots');
     } finally {
       setRefreshing(false);

@@ -420,7 +420,9 @@ function EventView() {
 
     try {
       setStartingTracking(true);
+      console.log('Starting tracking for event:', id);
       const response = await trackingApi.startTracking(id);
+      console.log('Start tracking response:', response);
       if (response.success) {
         setSnackbar({
           open: true,
@@ -430,6 +432,7 @@ function EventView() {
         // Update local event state immediately
         if (event) {
           setEvent({ ...event, trackingEnabled: true });
+          console.log('Event state updated with trackingEnabled: true');
         }
         // Also refresh from server after a short delay
         setTimeout(() => {
@@ -437,6 +440,7 @@ function EventView() {
         }, 500);
       }
     } catch (err) {
+      console.error('Error starting tracking:', err);
       setSnackbar({
         open: true,
         message: err instanceof Error ? err.message : 'Failed to start tracking',
