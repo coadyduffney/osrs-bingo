@@ -110,6 +110,28 @@ function EventView() {
     xpAmount: 0,
   });
   const [taskFormError, setTaskFormError] = useState('');
+  
+  // Memoize form change handlers to prevent recreating on every render
+  const handleTaskFormChange = useCallback((field: string, value: any) => {
+    setTaskForm(prev => ({ ...prev, [field]: value }));
+    if (field === 'title') setTaskFormError('');
+  }, []);
+  
+  // Memoize modal close handler
+  const handleCloseTaskModal = useCallback(() => {
+    setShowAddTaskModal(false);
+    setIsEditingTask(false);
+    setTaskToEdit(null);
+    setTaskFormError('');
+    setTaskForm({
+      title: '',
+      description: '',
+      points: 1,
+      isXPTask: false,
+      xpSkill: '',
+      xpAmount: 0,
+    });
+  }, []);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -1009,22 +1031,9 @@ function EventView() {
       {/* Add/Edit Task Modal */}
       <Modal
         open={showAddTaskModal}
-        onClose={() => {
-          setShowAddTaskModal(false);
-          setIsEditingTask(false);
-          setTaskToEdit(null);
-          setTaskFormError('');
-          setTaskForm({
-            title: '',
-            description: '',
-            points: 1,
-            isXPTask: false,
-            xpSkill: '',
-            xpAmount: 0,
-          });
-        }}
+        onClose={handleCloseTaskModal}
       >
-        <ModalDialog sx={{ minWidth: 500 }}>
+        <ModalDialog sx={{ minWidth: 500, maxWidth: 600 }}>
           <ModalClose />
           <Typography level="h4" sx={{ mb: 2 }}>
             {isEditingTask ? 'Edit Task' : 'Add Task'}
@@ -1038,10 +1047,7 @@ function EventView() {
                 <FormLabel>Task Title</FormLabel>
                 <Input
                   value={taskForm.title}
-                  onChange={(e) => {
-                    setTaskForm({ ...taskForm, title: e.target.value });
-                    setTaskFormError('');
-                  }}
+                  onChange={(e) => handleTaskFormChange('title', e.target.value)}
                   placeholder="e.g., Get 99 Fishing"
                   size="lg"
                 />
@@ -1059,9 +1065,7 @@ function EventView() {
                 <FormLabel>Description (optional)</FormLabel>
                 <Textarea
                   value={taskForm.description}
-                  onChange={(e) =>
-                    setTaskForm({ ...taskForm, description: e.target.value })
-                  }
+                  onChange={(e) => handleTaskFormChange('description', e.target.value)}
                   placeholder="Additional details about this task..."
                   minRows={3}
                 />
@@ -1071,12 +1075,7 @@ function EventView() {
                 <Input
                   type="number"
                   value={taskForm.points}
-                  onChange={(e) =>
-                    setTaskForm({
-                      ...taskForm,
-                      points: parseInt(e.target.value) || 1,
-                    })
-                  }
+                  onChange={(e) => handleTaskFormChange('points', parseInt(e.target.value) || 1)}
                   slotProps={{ input: { min: 1, max: 100 } }}
                 />
               </FormControl>
@@ -1085,9 +1084,7 @@ function EventView() {
               <FormControl>
                 <Checkbox
                   checked={taskForm.isXPTask}
-                  onChange={(e) =>
-                    setTaskForm({ ...taskForm, isXPTask: e.target.checked })
-                  }
+                  onChange={(e) => handleTaskFormChange('isXPTask', e.target.checked)}
                   label="This is an XP-based task"
                 />
                 <Typography level="body-sm" sx={{ mt: 0.5, opacity: 0.7 }}>
@@ -1101,10 +1098,13 @@ function EventView() {
                     <FormLabel>Skill</FormLabel>
                     <Select
                       value={taskForm.xpSkill}
-                      onChange={(_, value) =>
-                        setTaskForm({ ...taskForm, xpSkill: value || '' })
-                      }
+                      onChange={(_, value) => handleTaskFormChange('xpSkill', value || '')}
                       placeholder="Select a skill"
+                      slotProps={{
+                        listbox: {
+                          sx: { maxHeight: '300px' }
+                        }
+                      }}
                     >
                       {OSRS_SKILLS.map((skill) => (
                         <Option key={skill} value={skill}>
@@ -1119,12 +1119,7 @@ function EventView() {
                     <Input
                       type="number"
                       value={taskForm.xpAmount}
-                      onChange={(e) =>
-                        setTaskForm({
-                          ...taskForm,
-                          xpAmount: parseInt(e.target.value) || 0,
-                        })
-                      }
+                      onChange={(e) => handleTaskFormChange('xpAmount', parseInt(e.target.value) || 0)}
                       placeholder="e.g., 5000000 for 5M XP"
                       slotProps={{ input: { min: 0, step: 100000 } }}
                     />
@@ -1143,12 +1138,7 @@ function EventView() {
                 <Button
                   variant="outlined"
                   color="neutral"
-                  onClick={() => {
-                    setShowAddTaskModal(false);
-                    setIsEditingTask(false);
-                    setTaskToEdit(null);
-                    setTaskFormError('');
-                  }}
+                  onClick={handleCloseTaskModal}
                 >
                   Cancel
                 </Button>
