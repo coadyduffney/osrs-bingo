@@ -170,6 +170,11 @@ function EventView() {
   const [startingTracking, setStartingTracking] = useState(false);
   const [endingTracking, setEndingTracking] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [scheduleForm, setScheduleForm] = useState({
+    cronExpression: '',
+  });
+  const [savingSchedule, setSavingSchedule] = useState(false);
 
   // Check if user arrived via join code
   useEffect(() => {
@@ -522,7 +527,52 @@ function EventView() {
 
   const isEventCreator = user?.id === event?.creatorId;
 
-  const handleTaskClick = useCallback(async (position: number, task?: Task) => {
+  const handleSaveSchedule = async () => {
+    if (!id || !event) return;
+
+    try {
+      setSavingSchedule(true);
+      const cronValue = scheduleForm.cronExpression.trim() || null;
+      const response = await eventsApi.setSchedule(id, cronValue);
+      if (response.success) {
+        setEvent({ ...event, refreshSchedule: cronValue });
+        setSnackbar({
+          open: true,
+          message: cronValue 
+            ? `Schedule updated: XP will refresh ${getCronDescription(cronValue)}`
+            : 'Schedule disabled',
+          color: 'success',
+        });
+        setShowScheduleModal(false);
+      }
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err instanceof Error ? err.message : 'Failed to save schedule',
+        color: 'danger',
+      });
+    } finally {
+      setSavingSchedule(false);
+    }
+  };
+
+  const openScheduleModal = () => {
+    setScheduleForm({ cronExpression: event?.refreshSchedule || '' });
+    setShowScheduleModal(true);
+  };
+
+  const getCronDescription = (cron: string): string => {
+    const parts = cron.split(' ');
+    if (parts[0] === '*/30') return 'every 30 minutes';
+    if (parts[0] === '*/15') return 'every 15 minutes';
+    if (parts[0] === '*/5') return 'every 5 minutes';
+    if (parts[0] === '0' && parts[1] === '*') return 'every hour';
+    if (parts[1] === '0' && parts[2] === '*') return 'daily at midnight';
+    if (parts[1] === '0,12' && parts[2] === '*') return 'twice daily (midnight & noon)';
+    return cron;
+  };
+
+  const handleTaskClick = async (position: number, task?: Task) => {
     if (task) {
       setSelectedTask(task);
       setShowCompleteTaskModal(true);
@@ -557,7 +607,7 @@ function EventView() {
       setTaskToEdit(null);
       setShowAddTaskModal(true);
     }
-  }, [isEventCreator]);
+  };
 
   const handleCompleteTask = async () => {
     if (!selectedTask || !event) return;
@@ -816,14 +866,34 @@ function EventView() {
                     </Button>
                   )}
                   {event.status === 'active' && event.trackingEnabled && (
+                    <>
+                      <Button
+                        color="warning"
+                        variant="solid"
+                        size="sm"
+                        onClick={handleEndTracking}
+                        loading={endingTracking}
+                      >
+                        End XP Tracking
+                      </Button>
+                      <Button
+                        color="neutral"
+                        variant="outlined"
+                        size="sm"
+                        onClick={openScheduleModal}
+                      >
+                        {event.refreshSchedule ? '⏰ Schedule On' : '⏰ Set Schedule'}
+                      </Button>
+                    </>
+                  )}
+                  {event.status === 'active' && !event.trackingEnabled && event.refreshSchedule && (
                     <Button
-                      color="warning"
-                      variant="solid"
+                      color="neutral"
+                      variant="outlined"
                       size="sm"
-                      onClick={handleEndTracking}
-                      loading={endingTracking}
+                      onClick={openScheduleModal}
                     >
-                      End XP Tracking
+                      ⏰ Schedule On
                     </Button>
                   )}
                   <Button
@@ -1215,6 +1285,69 @@ function EventView() {
               loading={deleting}
             >
               Delete Event
+            </Button>
+          </Stack>
+        </ModalDialog>
+      </Modal>
+
+      {/* Schedule Configuration Modal */}
+      <Modal
+        open={showScheduleModal}
+        onClose={() => setShowScheduleModal(false)}
+      >
+        <ModalDialog>
+          <Typography level="h4" component="h2">
+            XP Refresh Schedule
+          </Typography>
+          <Typography level="body-md" sx={{ mt: 1, mb: 2 }}>
+            Configure automatic XP refresh for players. The schedule uses cron syntax.
+          </Typography>
+          <FormControl>
+            <FormLabel>Cron Expression</FormLabel>
+            <Input
+              value={scheduleForm.cronExpression}
+              onChange={(e) => setScheduleForm({ cronExpression: e.target.value })}
+              placeholder="e.g., 0 * * * *"
+            />
+            <Typography level="body-xs" sx={{ mt: 1, color: 'text.secondary' }}>
+              Leave empty to disable automatic refresh
+            </Typography>
+          </FormControl>
+          <Box sx={{ mt: 2, mb: 2 }}>
+            <Typography level="body-sm" sx={{ mb: 1 }}>Quick presets:</Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Button size="sm" variant="outlined" onClick={() => setScheduleForm({ cronExpression: '*/30 * * * *' })}>
+                Every 30 min
+              </Button>
+              <Button size="sm" variant="outlined" onClick={() => setScheduleForm({ cronExpression: '0 * * * *' })}>
+                Hourly
+              </Button>
+              <Button size="sm" variant="outlined" onClick={() => setScheduleForm({ cronExpression: '0 0 * * *' })}>
+                Daily
+              </Button>
+              <Button size="sm" variant="outlined" onClick={() => setScheduleForm({ cronExpression: '0 0,12 * * *' })}>
+                Twice daily
+              </Button>
+            </Stack>
+          </Box>
+          <Stack
+            direction="row"
+            spacing={1}
+            justifyContent="flex-end"
+          >
+            <Button
+              variant="plain"
+              color="neutral"
+              onClick={() => setShowScheduleModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="primary"
+              onClick={handleSaveSchedule}
+              loading={savingSchedule}
+            >
+              Save Schedule
             </Button>
           </Stack>
         </ModalDialog>

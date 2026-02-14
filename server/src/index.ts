@@ -11,6 +11,7 @@ import eventRoutes from './routes/events.js';
 import teamRoutes from './routes/teams.js';
 import taskRoutes from './routes/tasks.js';
 import trackingRoutes from './routes/tracking.js';
+import { startScheduler } from './services/scheduler.js';
 
 dotenv.config();
 
@@ -91,6 +92,7 @@ httpServer.listen(port, () => {
   console.log(`🚀 Server is running on http://localhost:${port}`);
   console.log(`📝 API documentation: http://localhost:${port}/api/health`);
   console.log(`🔌 WebSocket server ready`);
+  startScheduler();
 });
 
 // Handle unhandled promise rejections

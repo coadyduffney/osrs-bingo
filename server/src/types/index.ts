@@ -15,6 +15,8 @@ export interface Event {
   status: 'draft' | 'active' | 'completed';
   startDate?: Date;
   endDate?: Date;
+  refreshSchedule?: string; // cron expression (e.g., '0 * * * *' for every hour)
+  trackingEnabled?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

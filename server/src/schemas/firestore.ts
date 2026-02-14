@@ -31,6 +31,7 @@ export interface EventDocument extends FirestoreDocument {
   eventStartedAt?: Timestamp; // When tracking actually started
   eventEndedAt?: Timestamp; // When tracking ended
   trackingEnabled: boolean; // Whether XP tracking is active
+  refreshSchedule?: string; // Cron expression for XP refresh (e.g., '0 * * * *' for every hour)
   teamIds: string[]; // Array of team IDs
   taskIds: string[]; // Array of task IDs
   joinCode: string; // 6-character code for joining event

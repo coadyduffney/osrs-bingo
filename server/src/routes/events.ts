@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import cron from 'node-cron';
 import { z } from 'zod';
 import { ApiErrorClass, asyncHandler } from '../middleware/errorHandler.js';
 import { EventRepository } from '../repositories/index.js';
@@ -174,6 +175,43 @@ router.post('/:id/publish', authMiddleware, asyncHandler(async (req: Request, re
 
   // Update status to active
   await eventRepo.update(req.params.id, { status: 'active' });
+  const updatedEvent = await eventRepo.findById(req.params.id);
+
+  res.json({
+    success: true,
+    data: updatedEvent
+  });
+}));
+
+// Set XP refresh schedule (cron expression) - protected route
+router.post('/:id/schedule', authMiddleware, asyncHandler(async (req: Request, res: Response) => {
+  const { cronExpression } = req.body;
+
+  if (!cronExpression && cronExpression !== null) {
+    throw new ApiErrorClass(400, 'cronExpression is required');
+  }
+
+  // Allow null/empty to disable scheduling
+  if (cronExpression && !cron.validate(cronExpression)) {
+    throw new ApiErrorClass(400, 'Invalid cron expression. See https://crontab.guru/ for help');
+  }
+
+  const event = await eventRepo.findById(req.params.id);
+  
+  if (!event) {
+    throw new ApiErrorClass(404, 'Event not found');
+  }
+
+  const currentUserId = (req as any).user.id;
+
+  if (event.creatorId !== currentUserId) {
+    throw new ApiErrorClass(403, 'Only the event creator can set the schedule');
+  }
+
+  await eventRepo.update(req.params.id, { 
+    refreshSchedule: cronExpression || null 
+  });
+
   const updatedEvent = await eventRepo.findById(req.params.id);
 
   res.json({

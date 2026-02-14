@@ -138,6 +138,7 @@ export interface Event {
   endDate?: string;
   joinCode: string;
   trackingEnabled?: boolean;
+  refreshSchedule?: string | null;
   eventStartedAt?: string;
   eventEndedAt?: string;
   createdAt: string;
@@ -257,6 +258,9 @@ export const eventsApi = {
 
   publish: (id: string) =>
     apiClient.post<ApiResponse<Event>>(`/api/events/${id}/publish`, {}),
+
+  setSchedule: (id: string, cronExpression: string | null) =>
+    apiClient.post<ApiResponse<Event>>(`/api/events/${id}/schedule`, { cronExpression }),
 };
 
 // Teams API
