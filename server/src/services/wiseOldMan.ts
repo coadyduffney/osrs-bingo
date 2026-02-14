@@ -110,7 +110,9 @@ export class WiseOldManService {
         description: `OSRS Bingo Event: ${name}`,
         members: members.map(username => ({ username, role: 'member' }))
       });
-      return response.data;
+      
+      // WOM API returns the group wrapped in a 'group' property
+      return response.data.group || response.data;
     } catch (error: any) {
       console.error('Failed to create group:', error.response?.data || error.message);
       return null;
