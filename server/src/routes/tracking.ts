@@ -9,6 +9,7 @@ const womService = new WiseOldManService();
 
 // Use existing WiseOldMan group for all events
 const WOM_GROUP_ID = parseInt(process.env.WOM_GROUP_ID || '22342');
+const WOM_VERIFICATION_CODE = process.env.WOM_VERIFICATION_CODE || '';
 
 // Start event tracking - snapshots all team members' XP
 router.post('/:eventId/start', authMiddleware, async (req: Request, res: Response, next: NextFunction) => {
@@ -72,7 +73,7 @@ router.post('/:eventId/start', authMiddleware, async (req: Request, res: Respons
     const usernames = membersWithRSN.map((m) => m.rsn);
     console.log(`🔄 Updating ${usernames.length} players via group ${WOM_GROUP_ID}...`);
     
-    const updateResult = await womService.updateGroup(WOM_GROUP_ID);
+    const updateResult = await womService.updateGroup(WOM_GROUP_ID, WOM_VERIFICATION_CODE);
     if (!updateResult) {
       console.warn('⚠️  Group update failed, continuing with stale data');
     }
@@ -164,7 +165,7 @@ router.post('/:eventId/end', authMiddleware, async (req: Request, res: Response,
 
     // Update all players one final time using the group
     console.log(`🔄 Updating group ${WOM_GROUP_ID} for final snapshot...`);
-    await womService.updateGroup(WOM_GROUP_ID);
+    await womService.updateGroup(WOM_GROUP_ID, WOM_VERIFICATION_CODE);
     // Wait for WOM to process
     await new Promise((resolve) => setTimeout(resolve, 3000));
 
@@ -266,7 +267,7 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
     // Update players in WOM using the existing group (much faster!)
     const usernames = baselineSnapshots.docs.map((doc) => doc.data().rsn);
     console.log(`🔄 Refreshing ${usernames.length} players via group ${WOM_GROUP_ID}...`);
-    await womService.updateGroup(WOM_GROUP_ID);
+    await womService.updateGroup(WOM_GROUP_ID, WOM_VERIFICATION_CODE);
 
     // Wait for WOM to process
     await new Promise((resolve) => setTimeout(resolve, 3000));

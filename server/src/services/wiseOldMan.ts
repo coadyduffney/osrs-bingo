@@ -175,10 +175,12 @@ export class WiseOldManService {
    * Update all members of a group (batch update)
    * This is the optimal way to update multiple players at once
    */
-  async updateGroup(groupId: number): Promise<{ message: string; count: number } | null> {
+  async updateGroup(groupId: number, verificationCode: string): Promise<{ message: string; count: number } | null> {
     try {
       console.log(`📡 Calling WOM API: POST /groups/${groupId}/update-all`);
-      const response = await axiosInstance.post(`/groups/${groupId}/update-all`);
+      const response = await axiosInstance.post(`/groups/${groupId}/update-all`, {
+        verificationCode
+      });
       console.log(`✅ WOM Response:`, response.data);
       return response.data;
     } catch (error: any) {
@@ -328,12 +330,12 @@ export class WiseOldManService {
    * Batch update multiple players using group or individual updates
    * If groupId is provided, uses the efficient group update endpoint
    */
-  async batchUpdatePlayers(usernames: string[], groupId?: number): Promise<void> {
+  async batchUpdatePlayers(usernames: string[], groupId?: number, verificationCode?: string): Promise<void> {
     // If we have a group ID, use the efficient batch update
-    if (groupId) {
+    if (groupId && verificationCode) {
       console.log(`🔄 Updating all ${usernames.length} players via group ${groupId}...`);
       console.log(`   Players: ${usernames.join(', ')}`);
-      const result = await this.updateGroup(groupId);
+      const result = await this.updateGroup(groupId, verificationCode);
       if (result) {
         console.log(`✅ Updated ${result.count} players in a single request`);
         return;
