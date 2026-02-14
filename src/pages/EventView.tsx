@@ -473,6 +473,8 @@ function EventView() {
     }
   };
 
+  const isEventCreator = user?.id === event?.creatorId;
+
   const handleTaskClick = useCallback(async (position: number, task?: Task) => {
     if (task) {
       setSelectedTask(task);
@@ -601,8 +603,6 @@ function EventView() {
       setCompleting(false);
     }
   };
-
-  const isEventCreator = user?.id === event?.creatorId;
 
   // Find user's team for this event (memoized to prevent recalculation)
   const userTeam = useMemo(
