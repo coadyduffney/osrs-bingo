@@ -288,7 +288,7 @@ const Leaderboard = memo(function Leaderboard({ teams, members }: LeaderboardPro
       <Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
           <EmojiEventsIcon sx={{ color: 'primary.500' }} />
-          <Typography level="h3">Individual Leaderboard</Typography>
+          <Typography level="h3">Player Leaderboard</Typography>
           <Chip size="sm" variant="soft" color="neutral">
             {individualLeaderboard.length} players
           </Chip>
