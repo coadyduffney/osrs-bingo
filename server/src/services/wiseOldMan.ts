@@ -95,6 +95,29 @@ const axiosInstance = axios.create({
   timeout: 10000,
 });
 
+async function axiosWithRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelayMs: number = 5000
+): Promise<T> {
+  let lastError: Error | null = null;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      if (error.response?.status === 429 && attempt < maxRetries) {
+        const delay = baseDelayMs * attempt;
+        console.log(`  ⏳ Rate limited (429), retrying in ${delay/1000}s (attempt ${attempt}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw lastError;
+}
+
 export class WiseOldManService {
   /**
    * Search for an existing group by name
@@ -256,11 +279,50 @@ export class WiseOldManService {
   }
 
   /**
+   * Update a player's data and get the latest snapshot in a single call
+   * POST /players/:username returns PlayerDetails which includes latestSnapshot
+   */
+  async updatePlayerAndGetSnapshot(username: string): Promise<PlayerSnapshot | null> {
+    try {
+      console.log(`  📡 Calling POST /players/${username} to update and get snapshot...`);
+      const response = await axiosWithRetry(() => axiosInstance.post(`/players/${username}`));
+      const playerDetails = response.data;
+      
+      if (!playerDetails.latestSnapshot) {
+        console.log(`  ⚠️ No latest snapshot available for ${username}`);
+        return null;
+      }
+
+      const snapshot = playerDetails.latestSnapshot;
+      
+      // Extract skill experience and level values
+      const skills: { [key: string]: { experience: number; level: number } } = {};
+      for (const [skillName, skillData] of Object.entries(snapshot.data.skills as Record<string, { experience: number; level: number }>)) {
+        skills[skillName.toLowerCase()] = {
+          experience: skillData.experience,
+          level: skillData.level,
+        };
+      }
+
+      return {
+        rsn: username,
+        playerId: playerDetails.id,
+        snapshotTime: snapshot.createdAt,
+        skills,
+      };
+    } catch (error: any) {
+      throw new Error(`Failed to update player and get snapshot: ${error.message}`);
+    }
+  }
+
+  /**
    * Update a player's data (triggers WOM to fetch from hiscores)
+   * @deprecated Use updatePlayerAndGetSnapshot instead to reduce API calls
    */
   async updatePlayer(username: string): Promise<WOMPlayer> {
     try {
-      const response = await axiosInstance.post(`/players/${username}`);
+      console.log(`  📡 Calling POST /players/${username} to update player...`);
+      const response = await axiosWithRetry(() => axiosInstance.post(`/players/${username}`));
       return response.data;
     } catch (error: any) {
       throw new Error(`Failed to update player: ${error.message}`);
@@ -269,20 +331,25 @@ export class WiseOldManService {
 
   /**
    * Get the latest snapshot for a player
+   * @deprecated Use updatePlayerAndGetSnapshot instead to reduce API calls
    */
   async getLatestSnapshot(username: string): Promise<PlayerSnapshot | null> {
     try {
       // Get player data which includes latest stats
       // NOTE: Player should be updated via updatePlayer() or batchUpdatePlayers() before calling this
-      const player = await this.searchPlayer(username);
+      console.log(`  📡 Calling GET /players/${username} to search player...`);
+      const player = await axiosWithRetry(() => this.searchPlayer(username));
       if (!player) {
         return null;
       }
 
       // Get snapshots to get detailed skill data
-      const response = await axiosInstance.get(`/players/${username}/snapshots`, {
-        params: { limit: 1 }
-      });
+      console.log(`  📡 Calling GET /players/${username}/snapshots to get snapshot...`);
+      const response = await axiosWithRetry(() => 
+        axiosInstance.get(`/players/${username}/snapshots`, {
+          params: { limit: 1 }
+        })
+      );
 
       if (!response.data || response.data.length === 0) {
         return null;

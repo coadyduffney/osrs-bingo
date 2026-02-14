@@ -5,7 +5,7 @@ import { WiseOldManService } from './wiseOldMan.js';
 import { Timestamp } from 'firebase-admin/firestore';
 
 const womService = new WiseOldManService();
-const DELAY_MS = 5500;
+const DELAY_MS = 5500; // Delay between each player's update
 
 interface ScheduledJob {
   eventId: string;
@@ -115,56 +115,55 @@ export async function refreshEventSnapshots(eventId: string): Promise<{ success:
     const usernames = [...new Set(allUsernames)];
     console.log(`🔄 Refreshing ${usernames.length} unique players for event ${eventId}...`);
 
-    for (let i = 0; i < usernames.length; i++) {
-      const username = usernames[i];
-      try {
-        console.log(`  Updating ${username} (${i + 1}/${usernames.length})...`);
-        await womService.updatePlayer(username);
-        console.log(`  ✅ Updated ${username}`);
-
-        if (i < usernames.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
-        }
-      } catch (error: any) {
-        console.error(`  ❌ Failed to update ${username}:`, error.message);
-      }
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
     const batch = db.batch();
     const now = Timestamp.now();
     const processedRSNs = new Set<string>();
 
-    for (const doc of baselineSnapshots.docs) {
-      const data = doc.data();
-
-      if (processedRSNs.has(data.rsn)) {
-        continue;
-      }
-      processedRSNs.add(data.rsn);
-
+    for (let i = 0; i < usernames.length; i++) {
+      const username = usernames[i];
       try {
-        const snapshot = await womService.getLatestSnapshot(data.rsn);
+        console.log(`  🔄 [${i + 1}/${usernames.length}] Updating and fetching snapshot for ${username}...`);
+        const snapshot = await womService.updatePlayerAndGetSnapshot(username);
 
         if (snapshot) {
-          const snapshotData = {
-            eventId,
-            teamId: data.teamId,
-            userId: data.userId,
-            rsn: data.rsn,
-            snapshotType: 'current',
-            capturedAt: now,
-            skills: snapshot.skills,
-            createdAt: now,
-            updatedAt: now,
-          };
+          processedRSNs.add(username);
+          
+          // Find the baseline snapshot for this player to get teamId and userId
+          const baselineDoc = baselineSnapshots.docs.find(
+            (doc) => doc.data().rsn === username
+          );
+          
+          if (baselineDoc) {
+            const baselineData = baselineDoc.data();
+            const snapshotData = {
+              eventId,
+              teamId: baselineData.teamId,
+              userId: baselineData.userId,
+              rsn: username,
+              snapshotType: 'current',
+              capturedAt: now,
+              skills: snapshot.skills,
+              createdAt: now,
+              updatedAt: now,
+            };
 
-          const snapshotRef = db.collection('playerSnapshots').doc();
-          batch.set(snapshotRef, snapshotData);
+            const snapshotRef = db.collection('playerSnapshots').doc();
+            batch.set(snapshotRef, snapshotData);
+          }
+          console.log(`  ✅ Updated ${username}`);
         }
-      } catch (error) {
-        console.error(`Failed to refresh snapshot for ${data.rsn}:`, error);
+
+        // Wait between each player to avoid rate limiting
+        if (i < usernames.length - 1) {
+          console.log(`  ⏳ Waiting ${DELAY_MS/1000}s before next player...`);
+          await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
+        }
+      } catch (error: any) {
+        console.error(`  ❌ Failed to update ${username}:`, error.message);
+        // Still wait even on failure to avoid hammering the API
+        if (i < usernames.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
+        }
       }
     }
 
