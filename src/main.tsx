@@ -7,9 +7,61 @@ import CssBaseline from '@mui/joy/CssBaseline';
 import { SocketProvider } from './contexts/SocketContext.tsx';
 
 const theme = extendTheme({
+  cssVarPrefix: 'joy',
   fontFamily: {
     body: '"Roboto", "Segoe UI", sans-serif',
     display: '"Roboto", "Segoe UI", sans-serif',
+  },
+  colorSchemes: {
+    dark: {
+      palette: {
+        mode: 'dark',
+        primary: {
+          50: '#e8ecef',
+          100: '#c5d0d7',
+          200: '#9fb1bd',
+          300: '#7892a3',
+          400: '#5b7a8f',
+          500: '#3d5a6b',
+          600: '#375263',
+          700: '#2f4655',
+          800: '#273a48',
+          900: '#1a282f',
+          solidBg: '#3d5a6b',
+          solidHoverBg: '#4a6a7d',
+          solidActiveBg: '#2f4655',
+          outlinedBorder: '#3d5a6b',
+          outlinedColor: '#5a7a8d',
+          outlinedHoverBg: 'rgba(61, 90, 107, 0.08)',
+          softColor: '#6a8a9d',
+          softBg: 'rgba(61, 90, 107, 0.16)',
+          softHoverBg: 'rgba(61, 90, 107, 0.24)',
+          plainColor: '#5a7a8d',
+          plainHoverBg: 'rgba(61, 90, 107, 0.08)',
+        },
+        success: {
+          solidBg: '#1f7a1f',
+          solidHoverBg: '#2d8a2d',
+        },
+        background: {
+          body: 'var(--joy-palette-common-black)',
+          surface: '#0f1419',
+          level1: '#1a1f2e',
+          level2: '#232936',
+          level3: '#2d3544',
+        },
+        text: {
+          primary: '#e8eaed',
+          secondary: '#9aa0a6',
+          tertiary: '#5f6368',
+        },
+        neutral: {
+          outlinedBorder: 'rgba(255, 255, 255, 0.12)',
+          plainColor: '#9aa0a6',
+        },
+        divider: 'rgba(255, 255, 255, 0.12)',
+      },
+    },
   },
   components: {
     JoyCard: {
@@ -78,40 +130,13 @@ const theme = extendTheme({
       },
     },
   },
-  colorSchemes: {
-    dark: {
-      palette: {
-        primary: {
-          50: '#e8ecef',
-          100: '#c5d0d7',
-          200: '#9fb1bd',
-          300: '#7892a3',
-          400: '#5b7a8f',
-          500: '#3d5a6b',
-          600: '#375263',
-          700: '#2f4655',
-          800: '#273a48',
-          900: '#1a282f',
-          solidBg: '#3d5a6b',
-          solidHoverBg: '#4a6a7d',
-          solidActiveBg: '#2f4655',
-          outlinedBorder: '#3d5a6b',
-          outlinedColor: '#5a7a8d',
-          outlinedHoverBg: 'rgba(61, 90, 107, 0.08)',
-          softColor: '#6a8a9d',
-          softBg: 'rgba(61, 90, 107, 0.16)',
-          softHoverBg: 'rgba(61, 90, 107, 0.24)',
-          plainColor: '#5a7a8d',
-          plainHoverBg: 'rgba(61, 90, 107, 0.08)',
-        },
-      },
-    },
-  },
 });
 
 // Set dark mode immediately before React renders
 if (typeof window !== 'undefined') {
   localStorage.setItem('joy-mode', 'dark');
+  // Set color scheme attribute immediately to prevent flash
+  document.documentElement.setAttribute('data-joy-color-scheme', 'dark');
 }
 
 createRoot(document.getElementById('root')!).render(
@@ -121,8 +146,9 @@ createRoot(document.getElementById('root')!).render(
       defaultMode="dark"
       modeStorageKey="joy-mode"
       disableTransitionOnChange
+      colorSchemeStorageKey="joy-color-scheme"
     >
-      <CssBaseline />
+      <CssBaseline enableColorScheme />
       <SocketProvider>
         <App />
       </SocketProvider>
