@@ -221,6 +221,7 @@ export const authApi = {
   updateProfile: (data: {
     displayName?: string;
     avatarUrl?: string;
+    rsn?: string;
   }) => apiClient.put<ApiResponse<User>>('/api/auth/me', data),
 
   getUsersByIds: (userIds: string[]) =>
