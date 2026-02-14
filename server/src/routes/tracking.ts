@@ -7,6 +7,9 @@ import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 const router = Router();
 const womService = new WiseOldManService();
 
+// Use existing WiseOldMan group for all events
+const WOM_GROUP_ID = parseInt(process.env.WOM_GROUP_ID || '22342');
+
 // Start event tracking - snapshots all team members' XP
 router.post('/:eventId/start', authMiddleware, async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -65,21 +68,14 @@ router.post('/:eventId/start', authMiddleware, async (req: Request, res: Respons
 
     console.log(`📋 Starting tracking for ${membersWithRSN.length} players...`);
 
-    // Get or create WiseOldMan group for efficient batch updates
-    // Use event ID as group name to ensure uniqueness
+    // Update all players via existing WiseOldMan group (single API call)
     const usernames = membersWithRSN.map((m) => m.rsn);
-    const womGroup = await womService.getOrCreateGroup(eventId, usernames);
+    console.log(`🔄 Updating ${usernames.length} players via group ${WOM_GROUP_ID}...`);
     
-    if (!womGroup) {
-      return res.status(500).json({
-        error: 'Failed to create WiseOldMan group. Please try again.',
-      });
+    const updateResult = await womService.updateGroup(WOM_GROUP_ID);
+    if (!updateResult) {
+      console.warn('⚠️  Group update failed, continuing with stale data');
     }
-
-    console.log(`✅ Created WOM group ${womGroup.id} for batch tracking`);
-
-    // Update all players via the group (single API call instead of N calls)
-    await womService.batchUpdatePlayers(usernames, womGroup.id);
 
     // Wait for WOM to process the updates
     await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -114,11 +110,10 @@ router.post('/:eventId/start', authMiddleware, async (req: Request, res: Respons
       }
     }
 
-    // Update event to enable tracking and store WOM group info
+    // Update event to enable tracking
     batch.set(eventRef, {
       trackingEnabled: true,
       eventStartedAt: now,
-      womGroupId: womGroup.id,
       updatedAt: now,
     }, { merge: true });
 
@@ -167,13 +162,11 @@ router.post('/:eventId/end', authMiddleware, async (req: Request, res: Response,
       return res.status(400).json({ error: 'Event tracking not active' });
     }
 
-    // Update all players one final time using the group (if available)
-    if (eventData.womGroupId) {
-      console.log(`🔄 Updating group ${eventData.womGroupId} for final snapshot...`);
-      await womService.updateGroup(eventData.womGroupId);
-      // Wait for WOM to process
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-    }
+    // Update all players one final time using the group
+    console.log(`🔄 Updating group ${WOM_GROUP_ID} for final snapshot...`);
+    await womService.updateGroup(WOM_GROUP_ID);
+    // Wait for WOM to process
+    await new Promise((resolve) => setTimeout(resolve, 3000));
 
     // Create final current snapshots
     const baselineSnapshots = await db
@@ -270,15 +263,10 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
     });
     await deleteBatch.commit();
 
-    // Update players in WOM using group if available (much faster!)
+    // Update players in WOM using the existing group (much faster!)
     const usernames = baselineSnapshots.docs.map((doc) => doc.data().rsn);
-    if (eventData.womGroupId) {
-      console.log(`🔄 Refreshing ${usernames.length} players via group ${eventData.womGroupId}...`);
-      await womService.batchUpdatePlayers(usernames, eventData.womGroupId);
-    } else {
-      console.log(`🔄 Refreshing ${usernames.length} players individually (no group)...`);
-      await womService.batchUpdatePlayers(usernames);
-    }
+    console.log(`🔄 Refreshing ${usernames.length} players via group ${WOM_GROUP_ID}...`);
+    await womService.updateGroup(WOM_GROUP_ID);
 
     // Wait for WOM to process
     await new Promise((resolve) => setTimeout(resolve, 3000));
