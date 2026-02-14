@@ -150,7 +150,7 @@ export class EventRepository {
       .orderBy('createdAt', 'desc')
       .limit(limit)
       .get();
-    return snapshot.docs.map((doc) => serializeDocument(doc.data() as EventDocument));
+    return snapshot.docs.map((doc) => serializeDocument({ ...doc.data() as EventDocument, id: doc.id }));
   }
 
   async findByCreator(creatorId: string): Promise<EventDocument[]> {
@@ -158,7 +158,7 @@ export class EventRepository {
       .where('creatorId', '==', creatorId)
       .orderBy('createdAt', 'desc')
       .get();
-    return snapshot.docs.map((doc) => serializeDocument(doc.data() as EventDocument));
+    return snapshot.docs.map((doc) => serializeDocument({ ...doc.data() as EventDocument, id: doc.id }));
   }
 
   async findByStatus(
@@ -168,7 +168,7 @@ export class EventRepository {
       .where('status', '==', status)
       .orderBy('createdAt', 'desc')
       .get();
-    return snapshot.docs.map((doc) => serializeDocument(doc.data() as EventDocument));
+    return snapshot.docs.map((doc) => serializeDocument({ ...doc.data() as EventDocument, id: doc.id }));
   }
 
   async update(id: string, data: Partial<EventDocument>): Promise<void> {
@@ -220,8 +220,8 @@ export class EventRepository {
       .where('eventId', '==', eventId)
       .get();
 
-    const teams = teamsSnapshot.docs.map((doc) => doc.data() as TeamDocument);
-    const tasks = tasksSnapshot.docs.map((doc) => doc.data() as TaskDocument);
+    const teams = teamsSnapshot.docs.map((doc) => ({ ...doc.data() as TeamDocument, id: doc.id }));
+    const tasks = tasksSnapshot.docs.map((doc) => ({ ...doc.data() as TaskDocument, id: doc.id }));
 
     const completedTasksCount = tasks.filter(
       (t) => t.completedByTeamIds.length > 0,
@@ -286,14 +286,14 @@ export class TeamRepository {
       .where('eventId', '==', eventId)
       .orderBy('score', 'desc')
       .get();
-    return snapshot.docs.map((doc) => serializeDocument(doc.data() as TeamDocument));
+    return snapshot.docs.map((doc) => serializeDocument({ ...doc.data() as TeamDocument, id: doc.id }));
   }
 
   async findByMember(userId: string): Promise<TeamDocument[]> {
     const snapshot = await this.collection
       .where('memberIds', 'array-contains', userId)
       .get();
-    return snapshot.docs.map((doc) => serializeDocument(doc.data() as TeamDocument));
+    return snapshot.docs.map((doc) => serializeDocument({ ...doc.data() as TeamDocument, id: doc.id }));
   }
 
   async update(id: string, data: Partial<TeamDocument>): Promise<void> {
@@ -421,7 +421,7 @@ export class TaskRepository {
       .where('eventId', '==', eventId)
       .orderBy('position', 'asc')
       .get();
-    return snapshot.docs.map((doc) => serializeDocument(doc.data() as TaskDocument));
+    return snapshot.docs.map((doc) => serializeDocument({ ...doc.data() as TaskDocument, id: doc.id }));
   }
 
   async update(id: string, data: Partial<TaskDocument>): Promise<void> {
@@ -567,7 +567,7 @@ export class TaskCompletionRepository {
       .where('teamId', '==', teamId)
       .orderBy('completedAt', 'desc')
       .get();
-    return snapshot.docs.map((doc) => serializeDocument(doc.data() as TaskCompletionDocument));
+    return snapshot.docs.map((doc) => serializeDocument({ ...doc.data() as TaskCompletionDocument, id: doc.id }));
   }
 
   async findByEvent(eventId: string): Promise<TaskCompletionDocument[]> {
@@ -575,7 +575,7 @@ export class TaskCompletionRepository {
       .where('eventId', '==', eventId)
       .orderBy('completedAt', 'desc')
       .get();
-    return snapshot.docs.map((doc) => serializeDocument(doc.data() as TaskCompletionDocument));
+    return snapshot.docs.map((doc) => serializeDocument({ ...doc.data() as TaskCompletionDocument, id: doc.id }));
   }
 
   async verify(id: string, verifiedBy: string): Promise<void> {
