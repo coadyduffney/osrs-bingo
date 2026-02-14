@@ -254,6 +254,7 @@ function XPProgress({ eventId, teams, isEventCreator = false }: XPProgressProps)
                   {teamData.members.map((member) => {
                     const memberTotal = Object.values(member.gains).reduce((sum, g) => sum + g.gain, 0);
                     const topMemberSkills = Object.entries(member.gains)
+                      .filter(([skill]) => skill !== 'overall') // Exclude 'overall' as it's not a real skill
                       .sort(([, a], [, b]) => b.gain - a.gain)
                       .slice(0, 3)
                       .filter(([, g]) => g.gain > 0);
