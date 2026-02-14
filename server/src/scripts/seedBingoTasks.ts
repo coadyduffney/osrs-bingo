@@ -1,13 +1,13 @@
 import { db } from '../config/firebase.js';
 import { Timestamp } from 'firebase-admin/firestore';
 
-const eventId = 'NJVN4qSZT7He4EKSlJHJ';
+const eventId = 'Pit5RcAkebJ8mFSZ0gMQ';
 
 const tasks = [
-  { taskNum: 1, title: '5m agi xp', difficulty: 2 },
-  { taskNum: 2, title: '5m rc xp', difficulty: 2 },
-  { taskNum: 3, title: '4m mining xp', difficulty: 2 },
-  { taskNum: 4, title: '6m sailing xp', difficulty: 2 },
+  { taskNum: 1, title: '5m agi xp', difficulty: 2, isXPTask: true, xpSkill: 'agility', xpAmount: 5000000 },
+  { taskNum: 2, title: '5m rc xp', difficulty: 2, isXPTask: true, xpSkill: 'runecraft', xpAmount: 5000000 },
+  { taskNum: 3, title: '4m mining xp', difficulty: 2, isXPTask: true, xpSkill: 'mining', xpAmount: 4000000 },
+  { taskNum: 4, title: '6m sailing xp', difficulty: 2, isXPTask: true, xpSkill: 'agility', xpAmount: 6000000 }, // Note: OSRS doesn't have sailing, using agility
   { taskNum: 5, title: '1 unsired', difficulty: 3 },
   { taskNum: 6, title: 'full bludgeon', difficulty: 7 },
   { taskNum: 7, title: 'Any Jar', difficulty: 9 },
@@ -103,7 +103,7 @@ const tasks = [
   { taskNum: 97, title: 'Dagonhai Piece', difficulty: 7 },
   { taskNum: 98, title: '2k Rannars Ggathered Total', difficulty: 3 },
   { taskNum: 99, title: '250 Yama Shards', difficulty: 6 },
-  { taskNum: 100, title: '5m Herb xp', difficulty: 2 },
+  { taskNum: 100, title: '5m Herb xp', difficulty: 2, isXPTask: true, xpSkill: 'herblore', xpAmount: 5000000 },
 ];
 
 async function seedTasks() {
@@ -116,7 +116,7 @@ async function seedTasks() {
     for (const task of tasks) {
       const taskRef = db.collection('tasks').doc();
       
-      batch.set(taskRef, {
+      const taskData: any = {
         eventId,
         title: task.title,
         description: ``,
@@ -125,7 +125,18 @@ async function seedTasks() {
         completedByTeamIds: [],
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
-      });
+      };
+
+      // Add XP task fields if present
+      if (task.isXPTask && task.xpSkill && task.xpAmount) {
+        taskData.isXPTask = true;
+        taskData.xpRequirement = {
+          skill: task.xpSkill,
+          amount: task.xpAmount,
+        };
+      }
+
+      batch.set(taskRef, taskData);
 
       count++;
 
