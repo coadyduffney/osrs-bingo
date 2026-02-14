@@ -106,9 +106,12 @@ async function axiosWithRetry<T>(
       return await fn();
     } catch (error: any) {
       lastError = error;
-      if (error.response?.status === 429 && attempt < maxRetries) {
+      const status = error.response?.status;
+      // Retry on 429 (rate limit) or any 5xx server error
+      const isRetryable = status === 429 || (status >= 500 && status < 600);
+      if (isRetryable && attempt < maxRetries) {
         const delay = baseDelayMs * attempt;
-        console.log(`  ⏳ Rate limited (429), retrying in ${delay/1000}s (attempt ${attempt}/${maxRetries})...`);
+        console.log(`  ⏳ ${status === 429 ? 'Rate limited (429)' : `Server error (${status})`}, retrying in ${delay/1000}s (attempt ${attempt}/${maxRetries})...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
