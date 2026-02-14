@@ -67,11 +67,6 @@ async function loadScheduledJobs() {
           refreshEventSnapshots(eventId);
         });
         scheduledJobs.push({ eventId, task });
-      } else {
-        // Check if cron expression changed - if so, recreate the job
-        // We can't easily compare, so we'll check the next run time
-        // For simplicity, just log that we found existing job
-        console.log(`📅 Job already exists for event ${eventId}, schedule: ${cronExpression}`);
       }
     }
   } catch (error) {
