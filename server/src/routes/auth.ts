@@ -13,7 +13,8 @@ const userRepo = new UserRepository();
 const registerSchema = z.object({
   username: z.string().min(3).max(20),
   email: z.string().email(),
-  password: z.string().min(6)
+  password: z.string().min(6),
+  rsn: z.string().min(1).max(12)
 });
 
 const loginSchema = z.object({
@@ -24,7 +25,7 @@ const loginSchema = z.object({
 // Register
 router.post('/register', asyncHandler(async (req: Request, res: Response) => {
   try {
-    const { username, email, password } = registerSchema.parse(req.body);
+    const { username, email, password, rsn } = registerSchema.parse(req.body);
 
     // Check if user exists
     const existingByUsername = await userRepo.findByUsername(username);
@@ -42,6 +43,7 @@ router.post('/register', asyncHandler(async (req: Request, res: Response) => {
       username,
       email,
       passwordHash,
+      rsn,
     });
 
     // Generate token
@@ -60,6 +62,7 @@ router.post('/register', asyncHandler(async (req: Request, res: Response) => {
           email: newUser.email,
           displayName: newUser.displayName,
           avatarUrl: newUser.avatarUrl,
+          rsn: newUser.rsn,
         },
         token,
       },
@@ -105,6 +108,7 @@ router.post('/login', asyncHandler(async (req: Request, res: Response) => {
           email: user.email,
           displayName: user.displayName,
           avatarUrl: user.avatarUrl,
+          rsn: user.rsn,
         },
         token,
       },

@@ -203,11 +203,12 @@ export interface User {
 
 // Auth API
 export const authApi = {
-  register: (username: string, email: string, password: string) =>
+  register: (username: string, email: string, password: string, rsn: string) =>
     apiClient.post<ApiResponse<AuthResponse>>('/api/auth/register', {
       username,
       email,
       password,
+      rsn,
     }),
 
   login: (username: string, password: string) =>

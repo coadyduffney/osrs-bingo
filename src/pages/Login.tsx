@@ -18,6 +18,7 @@ function Login() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rsn, setRsn] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -31,7 +32,7 @@ function Login() {
 
     try {
       if (isRegistering) {
-        await register(username, email, password);
+        await register(username, email, password, rsn);
       } else {
         await login(username, password);
       }
@@ -77,6 +78,18 @@ function Login() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter email"
+                    disabled={loading}
+                  />
+                </FormControl>
+              )}
+
+              {isRegistering && (
+                <FormControl required>
+                  <FormLabel>RuneScape Name</FormLabel>
+                  <Input
+                    value={rsn}
+                    onChange={(e) => setRsn(e.target.value)}
+                    placeholder="Enter your RSN"
                     disabled={loading}
                   />
                 </FormControl>
