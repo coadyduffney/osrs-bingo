@@ -191,7 +191,7 @@ function XPProgress({ eventId, teams, isEventCreator = false }: XPProgressProps)
   return (
     <Box>
       {refreshing && (
-        <Alert color="info" variant="soft" sx={{ mb: 2 }}>
+        <Alert color="primary" variant="soft" sx={{ mb: 2 }}>
           <Typography level="body-sm">
             🔄 Updating player data from WiseOldMan, please wait... This may take a few minutes.
           </Typography>

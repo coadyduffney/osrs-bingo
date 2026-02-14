@@ -738,7 +738,7 @@ function EventView() {
 
       {/* Starting Tracking Alert */}
       {startingTracking && (
-        <Alert color="info" variant="soft" sx={{ mb: 3 }}>
+        <Alert color="primary" variant="soft" sx={{ mb: 3 }}>
           <Typography level="body-sm">
             🔄 Updating player data from WiseOldMan, please wait... This may take a few minutes.
           </Typography>
