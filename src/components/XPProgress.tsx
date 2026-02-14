@@ -19,6 +19,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 interface XPProgressProps {
   eventId: string;
   teams: Array<{ id: string; name: string; color?: string }>;
+  isEventCreator?: boolean;
 }
 
 interface SkillGains {
@@ -55,7 +56,7 @@ function formatXP(xp: number): string {
   return xp.toString();
 }
 
-function XPProgress({ eventId, teams }: XPProgressProps) {
+function XPProgress({ eventId, teams, isEventCreator = false }: XPProgressProps) {
   const [progress, setProgress] = useState<TeamProgress[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -132,17 +133,45 @@ function XPProgress({ eventId, teams }: XPProgressProps) {
 
   if (error) {
     return (
-      <Alert color="danger" variant="soft">
-        {error}
-      </Alert>
+      <Box>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+          <Typography level="h3">XP Progress</Typography>
+          <Button
+            size="sm"
+            variant="outlined"
+            startDecorator={<RefreshIcon />}
+            onClick={handleRefresh}
+            loading={refreshing || checking}
+          >
+            Refresh & Check Tasks
+          </Button>
+        </Stack>
+        <Alert color="danger" variant="soft">
+          {error}
+        </Alert>
+      </Box>
     );
   }
 
   if (progress.length === 0) {
     return (
-      <Alert color="neutral" variant="soft">
-        No XP data available yet. Make sure tracking has been started and players have set their RSNs.
-      </Alert>
+      <Box>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+          <Typography level="h3">XP Progress</Typography>
+          <Button
+            size="sm"
+            variant="outlined"
+            startDecorator={<RefreshIcon />}
+            onClick={handleRefresh}
+            loading={refreshing || checking}
+          >
+            Refresh & Check Tasks
+          </Button>
+        </Stack>
+        <Alert color="neutral" variant="soft">
+          No XP data available yet. Make sure tracking has been started and players have set their RSNs.
+        </Alert>
+      </Box>
     );
   }
 
@@ -161,6 +190,14 @@ function XPProgress({ eventId, teams }: XPProgressProps) {
 
   return (
     <Box>
+      {refreshing && (
+        <Alert color="info" variant="soft" sx={{ mb: 2 }}>
+          <Typography level="body-sm">
+            🔄 Updating player data from WiseOldMan, please wait... This may take a few minutes.
+          </Typography>
+        </Alert>
+      )}
+      
       {checkMessage && (
         <Alert color="success" variant="soft" sx={{ mb: 2 }}>
           {checkMessage}
@@ -169,15 +206,17 @@ function XPProgress({ eventId, teams }: XPProgressProps) {
       
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Typography level="h3">XP Progress</Typography>
-        <Button
-          size="sm"
-          variant="outlined"
-          startDecorator={<RefreshIcon />}
-          onClick={handleRefresh}
-          loading={refreshing || checking}
-        >
-          Refresh & Check Tasks
-        </Button>
+        {isEventCreator && (
+          <Button
+            size="sm"
+            variant="outlined"
+            startDecorator={<RefreshIcon />}
+            onClick={handleRefresh}
+            loading={refreshing || checking}
+          >
+            Refresh & Check Tasks
+          </Button>
+        )}
       </Stack>
 
       <AccordionGroup>

@@ -736,6 +736,15 @@ function EventView() {
         </Alert>
       )}
 
+      {/* Starting Tracking Alert */}
+      {startingTracking && (
+        <Alert color="info" variant="soft" sx={{ mb: 3 }}>
+          <Typography level="body-sm">
+            🔄 Updating player data from WiseOldMan, please wait... This may take a few minutes.
+          </Typography>
+        </Alert>
+      )}
+
       {/* Event Header */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
@@ -1031,7 +1040,7 @@ function EventView() {
           <TabPanel value={3} sx={{ p: 0, pt: 2 }}>
             <Card>
               <CardContent>
-                <XPProgress eventId={event.id} teams={teams} />
+                <XPProgress eventId={event.id} teams={teams} isEventCreator={isEventCreator} />
               </CardContent>
             </Card>
           </TabPanel>
