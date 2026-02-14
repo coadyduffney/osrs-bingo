@@ -65,10 +65,10 @@ router.post('/:eventId/start', authMiddleware, async (req: Request, res: Respons
 
     console.log(`📋 Starting tracking for ${membersWithRSN.length} players...`);
 
-    // Create a WiseOldMan group for efficient batch updates
-    // Use event ID as group name to ensure uniqueness and avoid name conflicts
+    // Get or create WiseOldMan group for efficient batch updates
+    // Use event ID as group name to ensure uniqueness
     const usernames = membersWithRSN.map((m) => m.rsn);
-    const womGroup = await womService.createGroup(eventId, usernames);
+    const womGroup = await womService.getOrCreateGroup(eventId, usernames);
     
     if (!womGroup) {
       return res.status(500).json({

@@ -90,20 +90,42 @@ const axiosInstance = axios.create({
   baseURL: WOM_API_BASE,
   headers: {
     'User-Agent': WOM_USER_AGENT,
+    ...(process.env.WOM_API_KEY ? { 'x-api-key': process.env.WOM_API_KEY } : {}),
   },
   timeout: 10000,
 });
 
 export class WiseOldManService {
   /**
+   * Search for an existing group by name
+   */
+  async findGroupByName(name: string): Promise<WOMGroup | null> {
+    try {
+      const response = await axiosInstance.get('/groups', {
+        params: { name }
+      });
+      const groups = response.data;
+      if (Array.isArray(groups) && groups.length > 0) {
+        // Find exact match
+        const match = groups.find((g: any) => g.name === name);
+        return match || null;
+      }
+      return null;
+    } catch (error: any) {
+      console.log('No existing group found');
+      return null;
+    }
+  }
+
+  /**
    * Create a group for tracking event participants
    * Groups allow batch updates of all members
    */
   async createGroup(name: string, members: string[]): Promise<WOMGroup | null> {
+    // WOM has a 30 character limit for group names
+    const truncatedName = name.length > 30 ? name.substring(0, 30) : name;
+    
     try {
-      // WOM has a 30 character limit for group names
-      const truncatedName = name.length > 30 ? name.substring(0, 30) : name;
-      
       const response = await axiosInstance.post('/groups', {
         name: truncatedName,
         clanChat: undefined,
@@ -116,9 +138,37 @@ export class WiseOldManService {
       console.log(`✅ Group created successfully: ID=${group.id}, Name=${group.name}`);
       return group;
     } catch (error: any) {
-      console.error('Failed to create group:', error.response?.data || error.message);
+      const errorData = error.response?.data;
+      
+      // If group name already exists, try to find and reuse it
+      if (errorData?.message?.includes('already taken')) {
+        console.log('⚠️  Group name already exists, attempting to reuse existing group...');
+        const existingGroup = await this.findGroupByName(truncatedName);
+        if (existingGroup) {
+          console.log(`✅ Reusing existing group: ID=${existingGroup.id}, Name=${existingGroup.name}`);
+          return existingGroup;
+        }
+      }
+      
+      console.error('Failed to create group:', errorData || error.message);
       return null;
     }
+  }
+
+  /**
+   * Get or create a group for an event
+   * Checks if group exists first, creates new one if not
+   */
+  async getOrCreateGroup(name: string, members: string[]): Promise<WOMGroup | null> {
+    // First, check if group already exists
+    const existing = await this.findGroupByName(name.length > 30 ? name.substring(0, 30) : name);
+    if (existing) {
+      console.log(`✅ Found existing group: ID=${existing.id}, Name=${existing.name}`);
+      return existing;
+    }
+    
+    // Create new group if it doesn't exist
+    return await this.createGroup(name, members);
   }
 
   /**
