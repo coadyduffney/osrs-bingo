@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Box from '@mui/joy/Box';
 import Typography from '@mui/joy/Typography';
@@ -14,6 +14,7 @@ import Alert from '@mui/joy/Alert';
 import Link from '@mui/joy/Link';
 
 function Login() {
+  const location = useLocation();
   const [isRegistering, setIsRegistering] = useState(false);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -24,6 +25,13 @@ function Login() {
 
   const { login, register } = useAuth();
   const navigate = useNavigate();
+
+  // Check if we should start in register mode
+  useEffect(() => {
+    if (location.state?.register) {
+      setIsRegistering(true);
+    }
+  }, [location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +55,7 @@ function Login() {
   return (
     <Box sx={{ maxWidth: 450, mx: 'auto', p: 3, pt: 6 }}>
       <Typography level="h2" component="h1" sx={{ mb: 3, textAlign: 'center' }}>
-        {isRegistering ? 'Create Account' : 'Welcome Back'}
+        {isRegistering ? 'Create Account' : 'Login'}
       </Typography>
       
       <Card>

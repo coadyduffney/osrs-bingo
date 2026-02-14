@@ -123,6 +123,7 @@ function Home() {
               <Button
                 component={RouterLink}
                 to="/login"
+                state={{ register: true }}
                 size="lg"
                 variant="outlined"
               >
