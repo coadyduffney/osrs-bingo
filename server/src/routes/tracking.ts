@@ -11,6 +11,50 @@ const womService = new WiseOldManService();
 const WOM_GROUP_ID = parseInt(process.env.WOM_GROUP_ID || '22343');
 const WOM_VERIFICATION_CODE = process.env.WOM_VERIFICATION_CODE || '';
 
+// Update player data via WOM group (queues updates for all members)
+router.post('/:eventId/update-players', authMiddleware, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { eventId } = req.params;
+    const userId = (req as any).user.id;
+
+    // Get event and verify creator
+    const eventRef = db.collection('events').doc(eventId);
+    const eventDoc = await eventRef.get();
+
+    if (!eventDoc.exists) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    const eventData = eventDoc.data();
+    if (eventData?.creatorId !== userId) {
+      return res.status(403).json({ error: 'Only event creator can update player data' });
+    }
+
+    console.log(`🔄 Queueing player updates for group ${WOM_GROUP_ID}...`);
+    
+    const updateResult = await womService.updateGroup(WOM_GROUP_ID, WOM_VERIFICATION_CODE);
+    
+    if (!updateResult) {
+      return res.status(500).json({ 
+        success: false,
+        error: 'Failed to queue player updates. Please try again.' 
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        message: 'Player data update queued successfully',
+        info: 'WiseOldMan will update players one by one. This may take a few minutes.',
+        count: updateResult.count || 0
+      },
+    });
+  } catch (error) {
+    console.error('Error updating player data:', error);
+    return next(error);
+  }
+});
+
 // Start event tracking - snapshots all team members' XP
 router.post('/:eventId/start', authMiddleware, async (req: Request, res: Response, next: NextFunction) => {
   try {

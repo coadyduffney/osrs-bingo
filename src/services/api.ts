@@ -347,6 +347,9 @@ export const tasksApi = {
 
 // XP Tracking API
 export const trackingApi = {
+  updatePlayerData: (eventId: string) =>
+    apiClient.post<ApiResponse<{ message: string; info: string; count: number }>>(`/api/tracking/${eventId}/update-players`),
+
   startTracking: (eventId: string) =>
     apiClient.post<ApiResponse<{ message: string; playersTracked: number; players: string[] }>>(`/api/tracking/${eventId}/start`),
 

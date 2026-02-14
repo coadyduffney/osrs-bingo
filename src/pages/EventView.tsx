@@ -122,6 +122,7 @@ function EventView() {
   const [submitting, setSubmitting] = useState(false);
   const [startingTracking, setStartingTracking] = useState(false);
   const [endingTracking, setEndingTracking] = useState(false);
+  const [updatingPlayers, setUpdatingPlayers] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Check if user arrived via join code
@@ -451,6 +452,30 @@ function EventView() {
     }
   };
 
+  const handleUpdatePlayerData = async () => {
+    if (!id) return;
+
+    try {
+      setUpdatingPlayers(true);
+      const response = await trackingApi.updatePlayerData(id);
+      if (response.success) {
+        setSnackbar({
+          open: true,
+          message: `${response.data.message}. This may take a few minutes.`,
+          color: 'success',
+        });
+      }
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err instanceof Error ? err.message : 'Failed to update player data',
+        color: 'danger',
+      });
+    } finally {
+      setUpdatingPlayers(false);
+    }
+  };
+
   const handleEndTracking = async () => {
     if (!id) return;
 
@@ -752,15 +777,26 @@ function EventView() {
                     </Button>
                   )}
                   {event.status === 'active' && !event.trackingEnabled && (
-                    <Button
-                      color="primary"
-                      variant="solid"
-                      size="sm"
-                      onClick={handleStartTracking}
-                      loading={startingTracking}
-                    >
-                      Start XP Tracking
-                    </Button>
+                    <>
+                      <Button
+                        color="neutral"
+                        variant="outlined"
+                        size="sm"
+                        onClick={handleUpdatePlayerData}
+                        loading={updatingPlayers}
+                      >
+                        Update Player Data
+                      </Button>
+                      <Button
+                        color="primary"
+                        variant="solid"
+                        size="sm"
+                        onClick={handleStartTracking}
+                        loading={startingTracking}
+                      >
+                        Start XP Tracking
+                      </Button>
+                    </>
                   )}
                   {event.status === 'active' && event.trackingEnabled && (
                     <Button
