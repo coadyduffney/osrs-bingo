@@ -1248,7 +1248,7 @@ function EventView() {
                       value={taskForm.xpAmount}
                       onChange={(e) => handleTaskFormChange('xpAmount', parseInt(e.target.value) || 0)}
                       placeholder="e.g., 5000000 for 5M XP"
-                      slotProps={{ input: { min: 0, step: 100000 } }}
+                      slotProps={{ input: { min: 0 } }}
                     />
                     <Typography level="body-sm" sx={{ mt: 0.5, opacity: 0.7 }}>
                       Total XP gain required by team
