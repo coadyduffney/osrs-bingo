@@ -44,7 +44,7 @@ const SKILL_NAMES = [
   'attack', 'strength', 'defence', 'ranged', 'prayer', 'magic',
   'runecraft', 'construction', 'hitpoints', 'agility', 'herblore', 'thieving',
   'crafting', 'fletching', 'slayer', 'hunter', 'mining', 'smithing',
-  'fishing', 'cooking', 'firemaking', 'woodcutting', 'farming'
+  'fishing', 'cooking', 'firemaking', 'woodcutting', 'farming', 'sailing'
 ];
 
 function formatXP(xp: number): string {
