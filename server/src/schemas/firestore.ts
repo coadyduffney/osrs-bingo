@@ -31,6 +31,8 @@ export interface EventDocument extends FirestoreDocument {
   eventStartedAt?: Timestamp; // When tracking actually started
   eventEndedAt?: Timestamp; // When tracking ended
   trackingEnabled: boolean; // Whether XP tracking is active
+  womGroupId?: number; // WiseOldMan group ID for batch updates
+  womVerificationCode?: string; // Verification code for deleting WOM group
   teamIds: string[]; // Array of team IDs
   taskIds: string[]; // Array of task IDs
   joinCode: string; // 6-character code for joining event

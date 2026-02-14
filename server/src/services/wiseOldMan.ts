@@ -61,6 +61,19 @@ interface WOMSnapshot {
   };
 }
 
+interface WOMGroup {
+  id: number;
+  name: string;
+  clanChat?: string;
+  description?: string;
+  homeworld?: number;
+  verified: boolean;
+  score: number;
+  createdAt: string;
+  updatedAt: string;
+  memberCount: number;
+}
+
 interface PlayerSnapshot {
   rsn: string;
   playerId: number;
@@ -82,6 +95,67 @@ const axiosInstance = axios.create({
 });
 
 export class WiseOldManService {
+  /**
+   * Create a group for tracking event participants
+   * Groups allow batch updates of all members
+   */
+  async createGroup(name: string, members: string[]): Promise<WOMGroup | null> {
+    try {
+      const response = await axiosInstance.post('/groups', {
+        name,
+        clanChat: undefined,
+        description: `OSRS Bingo Event: ${name}`,
+        members: members.map(username => ({ username, role: 'member' }))
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to create group:', error.response?.data || error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Update all members of a group (batch update)
+   * This is the optimal way to update multiple players at once
+   */
+  async updateGroup(groupId: number): Promise<{ message: string; count: number } | null> {
+    try {
+      const response = await axiosInstance.post(`/groups/${groupId}/update-all`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to update group:', error.response?.data || error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Delete a group after event ends
+   */
+  async deleteGroup(groupId: number, verificationCode: string): Promise<boolean> {
+    try {
+      await axiosInstance.delete(`/groups/${groupId}`, {
+        data: { verificationCode }
+      });
+      return true;
+    } catch (error: any) {
+      console.error('Failed to delete group:', error.response?.data || error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Get group details including verification code
+   */
+  async getGroup(groupId: number): Promise<WOMGroup | null> {
+    try {
+      const response = await axiosInstance.get(`/groups/${groupId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to get group:', error.response?.data || error.message);
+      return null;
+    }
+  }
+
   /**
    * Search for a player by username
    */
@@ -188,21 +262,44 @@ export class WiseOldManService {
   }
 
   /**
-   * Batch update multiple players (rate-limited)
+   * Batch update multiple players using group or individual updates
+   * If groupId is provided, uses the efficient group update endpoint
    */
-  async batchUpdatePlayers(usernames: string[]): Promise<void> {
-    const DELAY_MS = 1000; // 1 second between requests to respect rate limits
+  async batchUpdatePlayers(usernames: string[], groupId?: number): Promise<void> {
+    // If we have a group ID, use the efficient batch update
+    if (groupId) {
+      console.log(`🔄 Updating all ${usernames.length} players via group ${groupId}...`);
+      const result = await this.updateGroup(groupId);
+      if (result) {
+        console.log(`✅ Updated ${result.count} players in a single request`);
+      } else {
+        console.warn('Group update failed, falling back to individual updates');
+        await this._updatePlayersIndividually(usernames);
+      }
+      return;
+    }
+
+    // Fallback to individual updates
+    await this._updatePlayersIndividually(usernames);
+  }
+
+  /**
+   * Update players individually with rate limiting (fallback method)
+   */
+  private async _updatePlayersIndividually(usernames: string[]): Promise<void> {
+    const DELAY_MS = 3000; // 3 seconds between requests to be safe
     
-    for (const username of usernames) {
+    for (let i = 0; i < usernames.length; i++) {
+      const username = usernames[i];
       try {
         await this.updatePlayer(username);
-        console.log(`✅ Updated ${username}`);
+        console.log(`✅ Updated ${username} (${i + 1}/${usernames.length})`);
       } catch (error: any) {
         console.error(`❌ Failed to update ${username}:`, error.message);
       }
       
       // Wait before next request
-      if (usernames.indexOf(username) < usernames.length - 1) {
+      if (i < usernames.length - 1) {
         await new Promise(resolve => setTimeout(resolve, DELAY_MS));
       }
     }
