@@ -244,6 +244,8 @@ router.post('/:id/schedule', authMiddleware, asyncHandler(async (req: Request, r
     refreshSchedule: cronExpression || null 
   });
 
+  console.log(`📅 Schedule updated for event ${req.params.id}: ${cronExpression || 'disabled'}`);
+
   const updatedEvent = await eventRepo.findById(req.params.id);
 
   res.json({

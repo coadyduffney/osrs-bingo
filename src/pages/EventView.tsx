@@ -571,8 +571,13 @@ function EventView() {
     }
   };
 
+  useEffect(() => {
+    if (showScheduleModal && event?.refreshSchedule !== undefined) {
+      setScheduleForm({ cronExpression: event.refreshSchedule || '' });
+    }
+  }, [showScheduleModal, event?.refreshSchedule]);
+
   const openScheduleModal = () => {
-    setScheduleForm({ cronExpression: event?.refreshSchedule || '' });
     setShowScheduleModal(true);
   };
 
