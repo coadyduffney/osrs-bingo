@@ -15,7 +15,6 @@ const theme = extendTheme({
   colorSchemes: {
     dark: {
       palette: {
-        mode: 'dark',
         primary: {
           50: '#e8ecef',
           100: '#c5d0d7',
@@ -39,27 +38,6 @@ const theme = extendTheme({
           plainColor: '#5a7a8d',
           plainHoverBg: 'rgba(61, 90, 107, 0.08)',
         },
-        success: {
-          solidBg: '#1f7a1f',
-          solidHoverBg: '#2d8a2d',
-        },
-        background: {
-          body: 'var(--joy-palette-common-black)',
-          surface: '#0f1419',
-          level1: '#1a1f2e',
-          level2: '#232936',
-          level3: '#2d3544',
-        },
-        text: {
-          primary: '#e8eaed',
-          secondary: '#9aa0a6',
-          tertiary: '#5f6368',
-        },
-        neutral: {
-          outlinedBorder: 'rgba(255, 255, 255, 0.12)',
-          plainColor: '#9aa0a6',
-        },
-        divider: 'rgba(255, 255, 255, 0.12)',
       },
     },
   },
