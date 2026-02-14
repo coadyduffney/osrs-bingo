@@ -865,7 +865,7 @@ function EventView() {
           <Tab>Bingo Board</Tab>
           <Tab>Teams</Tab>
           <Tab>Leaderboard</Tab>
-          {event.trackingEnabled && <Tab>XP Progress</Tab>}
+          <Tab>XP Progress</Tab>
         </TabList>
 
         {/* Bingo Board Tab */}
@@ -1036,15 +1036,13 @@ function EventView() {
         </TabPanel>
 
         {/* XP Progress Tab */}
-        {event.trackingEnabled && (
-          <TabPanel value={3} sx={{ p: 0, pt: 2 }}>
-            <Card>
-              <CardContent>
-                <XPProgress eventId={event.id} teams={teams} isEventCreator={isEventCreator} />
-              </CardContent>
-            </Card>
-          </TabPanel>
-        )}
+        <TabPanel value={3} sx={{ p: 0, pt: 2 }}>
+          <Card>
+            <CardContent>
+              <XPProgress eventId={event.id} teams={teams} isEventCreator={isEventCreator} />
+            </CardContent>
+          </Card>
+        </TabPanel>
       </Tabs>
 
       {/* Add/Edit Task Modal */}

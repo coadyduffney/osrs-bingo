@@ -118,7 +118,7 @@ router.post('/:eventId/start', authMiddleware, async (req: Request, res: Respons
     const usernames = [...new Set(allUsernames)]; // Remove duplicates
     console.log(`🔄 Updating ${usernames.length} unique players (from ${allUsernames.length} entries) individually...`);
     
-    const DELAY_MS = 3500; // 3.5 seconds between each update
+    const DELAY_MS = 5500; // 5.5 seconds between each update
     for (let i = 0; i < usernames.length; i++) {
       const username = usernames[i];
       try {
@@ -233,7 +233,7 @@ router.post('/:eventId/end', authMiddleware, async (req: Request, res: Response,
     const usernames = [...new Set(allUsernames)]; // Remove duplicates
     console.log(`🔄 Updating ${usernames.length} unique players (from ${allUsernames.length} snapshots) individually for final snapshot...`);
     
-    const DELAY_MS = 3500;
+    const DELAY_MS = 5500;
     for (let i = 0; i < usernames.length; i++) {
       const username = usernames[i];
       try {
@@ -354,7 +354,7 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
     const usernames = [...new Set(allUsernames)]; // Remove duplicates
     console.log(`🔄 Refreshing ${usernames.length} unique players (from ${allUsernames.length} snapshots) individually...`);
     
-    const DELAY_MS = 3500;
+    const DELAY_MS = 5500;
     for (let i = 0; i < usernames.length; i++) {
       const username = usernames[i];
       try {
