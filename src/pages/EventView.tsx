@@ -101,6 +101,15 @@ function EventView() {
   const [verificationImageToView, setVerificationImageToView] = useState<
     string | null
   >(null);
+  const [xpProgress, setXpProgress] = useState<{
+    teamId: string;
+    members: Array<{
+      userId: string;
+      rsn: string;
+      gains: { [skill: string]: { baseXP: number; currentXP: number; gain: number } };
+    }>;
+    totalGains: { [skill: string]: number };
+  }[] | null>(null);
   const [taskForm, setTaskForm] = useState({
     title: '',
     description: '',
@@ -316,6 +325,25 @@ function EventView() {
       leaveEvent(id);
     };
   }, [id, socket, joinEvent, leaveEvent, teams]);
+
+  // Fetch XP progress data for displaying on bingo board
+  useEffect(() => {
+    const fetchXpProgress = async () => {
+      if (!id || !event?.trackingEnabled) {
+        setXpProgress(null);
+        return;
+      }
+      try {
+        const response = await trackingApi.getProgress(id);
+        if (response.success) {
+          setXpProgress(response.data.teams);
+        }
+      } catch (err) {
+        console.error('Failed to fetch XP progress:', err);
+      }
+    };
+    fetchXpProgress();
+  }, [id, event?.trackingEnabled]);
 
   const handleTeamCreated = useCallback((newTeam: Team) => {
     setTeams(prev => [...prev, newTeam]);
@@ -1005,6 +1033,7 @@ function EventView() {
                 teams={teams}
                 onCellClick={handleTaskClick}
                 userTeamId={userTeam?.id}
+                xpProgress={xpProgress}
               />
             </CardContent>
           </Card>

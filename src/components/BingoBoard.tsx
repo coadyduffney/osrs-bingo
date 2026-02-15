@@ -7,6 +7,7 @@ import Chip from '@mui/joy/Chip';
 import Tooltip from '@mui/joy/Tooltip';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AddIcon from '@mui/icons-material/Add';
+import LinearProgress from '@mui/joy/LinearProgress';
 
 interface BingoBoardProps {
   size: number;
@@ -14,6 +15,15 @@ interface BingoBoardProps {
   teams?: Team[];
   onCellClick?: (position: number, task?: Task) => void;
   userTeamId?: string;
+  xpProgress?: {
+    teamId: string;
+    members: Array<{
+      userId: string;
+      rsn: string;
+      gains: { [skill: string]: { baseXP: number; currentXP: number; gain: number } };
+    }>;
+    totalGains: { [skill: string]: number };
+  }[] | null;
 }
 
 const BingoBoard = memo(function BingoBoard({
@@ -22,6 +32,7 @@ const BingoBoard = memo(function BingoBoard({
   teams = [],
   onCellClick,
   userTeamId,
+  xpProgress = null,
 }: BingoBoardProps) {
   // Create a map of position to task for quick lookup
   const taskMap = useMemo(
@@ -55,6 +66,20 @@ const BingoBoard = memo(function BingoBoard({
       .map((id) => teamMap.get(id))
       .filter(Boolean);
 
+    // Calculate XP progress for XP tasks
+    let xpProgressPercent = 0;
+    let xpGained = 0;
+    let xpRequired = 0;
+    if (task?.xpRequirement && xpProgress && userTeamId) {
+      const teamProgress = xpProgress.find(t => t.teamId === userTeamId);
+      if (teamProgress) {
+        const skill = task.xpRequirement.skill.toLowerCase();
+        xpRequired = task.xpRequirement.amount;
+        xpGained = teamProgress.totalGains[skill] || 0;
+        xpProgressPercent = Math.min(100, Math.round((xpGained / xpRequired) * 100));
+      }
+    }
+
     return {
       position: i,
       id: task?.id || `empty-${i}`,
@@ -66,8 +91,11 @@ const BingoBoard = memo(function BingoBoard({
       otherTeamNames,
       totalCompletions: task?.completedByTeamIds?.length || 0,
       task: task,
+      xpProgressPercent,
+      xpGained,
+      xpRequired,
     };
-  }), [size, taskMap, teamMap, userTeamId]);
+  }), [size, taskMap, teamMap, userTeamId, xpProgress]);
 
   const handleCellClick = useMemo(() => {
     return (cell: (typeof cells)[0]) => {
@@ -182,6 +210,32 @@ const BingoBoard = memo(function BingoBoard({
               >
                 {cell.otherTeamsCount} ✓
               </Chip>
+            )}
+            {/* XP Progress bar for XP tasks */}
+            {cell.xpProgressPercent > 0 && !cell.completed && (
+              <Box sx={{ position: 'absolute', bottom: 2, left: 2, right: 2 }}>
+                <LinearProgress
+                  determinate
+                  value={cell.xpProgressPercent}
+                  size="sm"
+                  color={cell.xpProgressPercent >= 100 ? 'success' : 'primary'}
+                  sx={{
+                    height: size >= 10 ? '4px' : '6px',
+                    borderRadius: 1,
+                  }}
+                />
+                <Typography
+                  level="body-xs"
+                  sx={{
+                    fontSize: size >= 10 ? '0.4rem' : '0.5rem',
+                    textAlign: 'center',
+                    mt: 0.25,
+                    color: 'text.secondary',
+                  }}
+                >
+                  {cell.xpGained.toLocaleString()} / {cell.xpRequired.toLocaleString()} XP
+                </Typography>
+              </Box>
             )}
             {cell.title ? (
               <Typography
