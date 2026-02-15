@@ -116,11 +116,9 @@ export async function refreshEventSnapshots(eventId: string): Promise<{ success:
       .where('snapshotType', '==', 'current')
       .get();
 
-    const deleteBatch = db.batch();
-    oldCurrentSnapshots.docs.forEach((doc) => {
-      deleteBatch.delete(doc.ref);
-    });
-    await deleteBatch.commit();
+    // DON'T delete old snapshots yet - we'll do it after creating new ones
+    // This prevents data loss if the update fails partway through
+    const oldSnapshotRefs = oldCurrentSnapshots.docs.map(doc => doc.ref);
 
     const allUsernames = baselineSnapshots.docs.map((doc) => doc.data().rsn);
     const usernames = [...new Set(allUsernames)];
@@ -178,7 +176,18 @@ export async function refreshEventSnapshots(eventId: string): Promise<{ success:
       }
     }
 
+    // Save new snapshots first
     await batch.commit();
+
+    // Then delete old snapshots AFTER new ones are saved
+    if (oldSnapshotRefs.length > 0) {
+      console.log(`🗑️ Deleting ${oldSnapshotRefs.length} old snapshots...`);
+      const deleteBatch = db.batch();
+      oldSnapshotRefs.forEach((ref) => {
+        deleteBatch.delete(ref);
+      });
+      await deleteBatch.commit();
+    }
 
     console.log(`✅ Scheduled XP refresh completed for event ${eventId}, ${processedRSNs.size} players updated`);
     return { success: true, playersUpdated: processedRSNs.size };

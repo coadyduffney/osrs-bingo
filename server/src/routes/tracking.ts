@@ -322,7 +322,6 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
     oldCurrentSnapshots.docs.forEach((doc) => {
       deleteBatch.delete(doc.ref);
     });
-    await deleteBatch.commit();
 
     // Update players individually with delays - deduplicate RSNs first
     const allUsernames = baselineSnapshots.docs.map((doc) => doc.data().rsn);
@@ -330,9 +329,10 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
     console.log(`🔄 Refreshing ${usernames.length} unique players (from ${allUsernames.length} snapshots) individually...`);
     
     const DELAY_MS = 5500;
-    const batch = db.batch();
+    const newSnapshotsBatch = db.batch();
     const now = Timestamp.now();
     let playersUpdated = 0;
+    const failedPlayers: string[] = [];
 
     for (let i = 0; i < usernames.length; i++) {
       const username = usernames[i];
@@ -357,7 +357,7 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
               updatedAt: now,
             };
             const snapshotRef = db.collection('playerSnapshots').doc();
-            batch.set(snapshotRef, snapshotData);
+            newSnapshotsBatch.set(snapshotRef, snapshotData);
             playersUpdated++;
           }
         }
@@ -368,10 +368,27 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
         }
       } catch (error: any) {
         console.error(`  ❌ Failed to update ${username}:`, error.message);
+        failedPlayers.push(username);
       }
     }
 
-    await batch.commit();
+    // Only delete old snapshots AFTER all new ones are created
+    // This way we don't lose data if something fails
+    if (failedPlayers.length > 0) {
+      console.warn(`⚠️ Failed to update ${failedPlayers.length} players, keeping their old snapshots`);
+    }
+
+    // First commit new snapshots
+    if (playersUpdated > 0) {
+      console.log(`💾 Saving ${playersUpdated} new snapshots...`);
+      await newSnapshotsBatch.commit();
+      
+      // Then delete old ones
+      console.log(`🗑️ Deleting ${oldCurrentSnapshots.size} old snapshots...`);
+      await deleteBatch.commit();
+    } else {
+      console.log(`⚠️ No snapshots were updated, not deleting old ones`);
+    }
 
     return res.json({
       success: true,
