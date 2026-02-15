@@ -868,8 +868,8 @@ function EventView() {
                   sx={{ fontWeight: 600 }}
                 >
                   {nextRunTime 
-                    ? `Next: ${new Date(nextRunTime).toLocaleTimeString()}`
-                    : `Every ${getCronDescription(event.refreshSchedule)}`
+                    ? `Next refresh at: ${new Date(nextRunTime).toLocaleTimeString()}`
+                    : `Refreshes ${getCronDescription(event.refreshSchedule)}`
                   }
                 </Chip>
               )}
