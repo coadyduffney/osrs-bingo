@@ -127,6 +127,7 @@ export async function refreshEventSnapshots(eventId: string): Promise<{ success:
     const batch = db.batch();
     const now = Timestamp.now();
     const processedRSNs = new Set<string>();
+    const failedPlayers: string[] = [];
 
     for (let i = 0; i < usernames.length; i++) {
       const username = usernames[i];
@@ -169,6 +170,7 @@ export async function refreshEventSnapshots(eventId: string): Promise<{ success:
         }
       } catch (error: any) {
         console.error(`  ❌ Failed to update ${username}:`, error.message);
+        failedPlayers.push(username);
         // Still wait even on failure to avoid hammering the API
         if (i < usernames.length - 1) {
           await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
@@ -179,14 +181,36 @@ export async function refreshEventSnapshots(eventId: string): Promise<{ success:
     // Save new snapshots first
     await batch.commit();
 
-    // Then delete old snapshots AFTER new ones are saved
-    if (oldSnapshotRefs.length > 0) {
-      console.log(`🗑️ Deleting ${oldSnapshotRefs.length} old snapshots...`);
-      const deleteBatch = db.batch();
-      oldSnapshotRefs.forEach((ref) => {
-        deleteBatch.delete(ref);
+    // Then delete old snapshots - but only for players that were successfully updated
+    // Keep old snapshots for failed players so they don't lose data
+    if (failedPlayers.length > 0) {
+      console.warn(`⚠️ Failed to update ${failedPlayers.length} players (${failedPlayers.join(', ')}), keeping their old snapshots`);
+      
+      // Find which old snapshots to delete (all except failed players)
+      const failedSet = new Set(failedPlayers);
+      const oldSnapshotsToDelete = oldSnapshotRefs.filter((ref) => {
+        const doc = oldCurrentSnapshots.docs.find(d => d.ref.id === ref.id);
+        return doc && !failedSet.has(doc.data().rsn);
       });
-      await deleteBatch.commit();
+      
+      if (oldSnapshotsToDelete.length > 0) {
+        console.log(`🗑️ Deleting ${oldSnapshotsToDelete.length} old current snapshots (for successful updates)...`);
+        const deleteBatch = db.batch();
+        oldSnapshotsToDelete.forEach((ref) => {
+          deleteBatch.delete(ref);
+        });
+        await deleteBatch.commit();
+      }
+    } else {
+      // All updates succeeded, delete all old snapshots
+      if (oldSnapshotRefs.length > 0) {
+        console.log(`🗑️ Deleting ${oldSnapshotRefs.length} old current snapshots...`);
+        const deleteBatch = db.batch();
+        oldSnapshotRefs.forEach((ref) => {
+          deleteBatch.delete(ref);
+        });
+        await deleteBatch.commit();
+      }
     }
 
     console.log(`✅ Scheduled XP refresh completed for event ${eventId}, ${processedRSNs.size} players updated`);

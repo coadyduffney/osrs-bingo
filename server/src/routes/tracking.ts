@@ -318,11 +318,6 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
       .where('snapshotType', '==', 'current')
       .get();
 
-    const deleteBatch = db.batch();
-    oldCurrentSnapshots.docs.forEach((doc) => {
-      deleteBatch.delete(doc.ref);
-    });
-
     // Update players individually with delays - deduplicate RSNs first
     const allUsernames = baselineSnapshots.docs.map((doc) => doc.data().rsn);
     const usernames = [...new Set(allUsernames)]; // Remove duplicates
@@ -375,7 +370,7 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
     // Only delete old snapshots AFTER all new ones are created
     // This way we don't lose data if something fails
     if (failedPlayers.length > 0) {
-      console.warn(`⚠️ Failed to update ${failedPlayers.length} players, keeping their old snapshots`);
+      console.warn(`⚠️ Failed to update ${failedPlayers.length} players (${failedPlayers.join(', ')}), keeping their old snapshots`);
     }
 
     // First commit new snapshots
@@ -383,9 +378,18 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
       console.log(`💾 Saving ${playersUpdated} new snapshots...`);
       await newSnapshotsBatch.commit();
       
-      // Then delete old ones
-      console.log(`🗑️ Deleting ${oldCurrentSnapshots.size} old snapshots...`);
-      await deleteBatch.commit();
+      // Then delete old ones - but only for successful updates
+      const failedSet = new Set(failedPlayers);
+      const oldSnapshotsToDelete = oldCurrentSnapshots.docs
+        .filter(doc => !failedSet.has(doc.data().rsn))
+        .map(doc => doc.ref);
+      
+      if (oldSnapshotsToDelete.length > 0) {
+        console.log(`🗑️ Deleting ${oldSnapshotsToDelete.length} old current snapshots (for successful updates)...`);
+        const deleteBatch = db.batch();
+        oldSnapshotsToDelete.forEach(ref => deleteBatch.delete(ref));
+        await deleteBatch.commit();
+      }
     } else {
       console.log(`⚠️ No snapshots were updated, not deleting old ones`);
     }
