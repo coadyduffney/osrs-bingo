@@ -317,11 +317,36 @@ function EventView() {
       }
     };
 
+    // Listen for task uncompleted
+    const handleTaskUncompleted = (data: {
+      task: Task;
+      teamId: string;
+    }) => {
+      console.log('Task uncompleted (real-time):', data);
+
+      // Update tasks list
+      setTasks((prev) =>
+        prev.map((t) => (t.id === data.task.id ? data.task : t)),
+      );
+
+      // Show notification
+      const team = teams.find((t) => t.id === data.teamId);
+      if (team) {
+        setSnackbar({
+          open: true,
+          message: `Task "${data.task.title}" was uncompleted for ${team.name}`,
+          color: 'warning',
+        });
+      }
+    };
+
     socket.on('task-completed', handleTaskCompleted);
+    socket.on('task-uncompleted', handleTaskUncompleted);
 
     // Cleanup
     return () => {
       socket.off('task-completed', handleTaskCompleted);
+      socket.off('task-uncompleted', handleTaskUncompleted);
       leaveEvent(id);
     };
   }, [id, socket, joinEvent, leaveEvent, teams]);
@@ -1596,6 +1621,101 @@ function EventView() {
                     </Tooltip>
                   )}
                 </Stack>
+
+                {/* Show completed teams list for event creator */}
+                {isEventCreator && selectedTask.completedByTeamIds.length > 0 && (
+                  <Box>
+                    <Typography level="title-sm" sx={{ mb: 1 }}>
+                      Completed Teams
+                    </Typography>
+                    <Stack spacing={1}>
+                      {selectedTask.completedByTeamIds.map((teamId) => {
+                        const team = teams.find((t) => t.id === teamId);
+                        const completion = taskCompletions.find(
+                          (c) => c.teamId === teamId
+                        );
+                        if (!team) return null;
+                        
+                        return (
+                          <Card key={teamId} variant="outlined" size="sm">
+                            <CardContent>
+                              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                <Box>
+                                  <Typography level="title-sm">{team.name}</Typography>
+                                  {completion && (
+                                    <Typography level="body-xs" sx={{ color: 'text.secondary' }}>
+                                      By {completion.completedByDisplayName || completion.completedByUsername} on{' '}
+                                      {new Date(completion.completedAt).toLocaleDateString()}
+                                    </Typography>
+                                  )}
+                                </Box>
+                                <Button
+                                  size="sm"
+                                  variant="soft"
+                                  color="danger"
+                                  onClick={async () => {
+                                    if (confirm(`Uncomplete this task for ${team.name}? This will deduct ${selectedTask.points} points from their score.`)) {
+                                      try {
+                                        const result = await tasksApi.uncomplete(selectedTask.id, teamId);
+                                        if (!result.success) {
+                                          throw new Error(result.error || 'Failed to uncomplete task');
+                                        }
+                                        
+                                        // Refresh all data
+                                        if (id) {
+                                          const [teamsResponse, tasksResponse] = await Promise.all([
+                                            teamsApi.getByEvent(id),
+                                            tasksApi.getByEvent(id),
+                                          ]);
+                                          
+                                          if (teamsResponse.success) {
+                                            setTeams(teamsResponse.data);
+                                          }
+                                          if (tasksResponse.success) {
+                                            setTasks(tasksResponse.data);
+                                          }
+                                        }
+                                        
+                                        // Update selected task
+                                        const updatedTask = await tasksApi.getById(selectedTask.id);
+                                        if (updatedTask.success) {
+                                          setSelectedTask(updatedTask.data);
+                                        }
+                                        
+                                        // Reload completions
+                                        const response = await tasksApi.getCompletions(selectedTask.id);
+                                        if (response.success) {
+                                          setTaskCompletions(response.data);
+                                        }
+                                        
+                                        setSnackbar({
+                                          open: true,
+                                          message: `Task uncompleted for ${team.name}`,
+                                          color: 'success',
+                                        });
+                                      } catch (err: any) {
+                                        console.error('Failed to uncomplete task:', err);
+                                        const errorMessage = err.response?.data?.error || err.message || 'Failed to uncomplete task';
+                                        setError(errorMessage);
+                                        setSnackbar({
+                                          open: true,
+                                          message: errorMessage,
+                                          color: 'danger',
+                                        });
+                                      }
+                                    }
+                                  }}
+                                >
+                                  Uncomplete
+                                </Button>
+                              </Stack>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </Stack>
+                  </Box>
+                )}
 
                 {/* Show YOUR team's completion status prominently */}
                 {isTaskCompletedByUserTeam && (

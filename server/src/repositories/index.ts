@@ -479,6 +479,43 @@ export class TaskRepository {
     });
   }
 
+  async uncompleteTask(
+    taskId: string,
+    teamId: string,
+  ): Promise<void> {
+    // Get the task to retrieve points
+    const task = await this.findById(taskId);
+    if (!task) throw new Error('Task not found');
+
+    const now = Timestamp.now();
+
+    // Remove team from completed teams
+    await this.collection.doc(taskId).update({
+      completedByTeamIds: FieldValue.arrayRemove(teamId),
+      updatedAt: now,
+    });
+
+    // Update team score and completed tasks (decrement)
+    await db.collection(COLLECTIONS.TEAMS).doc(teamId).update({
+      completedTaskIds: FieldValue.arrayRemove(taskId),
+      score: FieldValue.increment(-task.points),
+      updatedAt: now,
+    });
+
+    // Delete task completion record(s)
+    const completionsSnapshot = await db
+      .collection(COLLECTIONS.TASK_COMPLETIONS)
+      .where('taskId', '==', taskId)
+      .where('teamId', '==', teamId)
+      .get();
+
+    const batch = db.batch();
+    completionsSnapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+    await batch.commit();
+  }
+
   async delete(id: string): Promise<void> {
     await this.collection.doc(id).delete();
   }

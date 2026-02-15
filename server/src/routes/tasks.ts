@@ -115,6 +115,57 @@ router.post('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Resp
   }
 }));
 
+// Uncomplete a task (event creator only)
+router.post(
+  '/:id/uncomplete',
+  authMiddleware,
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const task = await taskRepo.findById(req.params.id);
+
+    if (!task) {
+      throw new ApiErrorClass(404, 'Task not found');
+    }
+
+    // Check if user is the event creator
+    const event = await eventRepo.findById(task.eventId);
+    if (!event) {
+      throw new ApiErrorClass(404, 'Event not found');
+    }
+
+    if (event.creatorId !== req.user?.id) {
+      throw new ApiErrorClass(403, 'Only the event creator can uncomplete tasks');
+    }
+
+    const { teamId } = req.body;
+    if (!teamId) {
+      throw new ApiErrorClass(400, 'Team ID required');
+    }
+
+    if (!task.completedByTeamIds.includes(teamId)) {
+      throw new ApiErrorClass(400, 'Task is not completed by this team');
+    }
+
+    await taskRepo.uncompleteTask(req.params.id, teamId);
+
+    // Fetch updated task
+    const updatedTask = await taskRepo.findById(req.params.id);
+
+    // Emit Socket.IO event to all clients in the event room
+    const io = (req.app as any).get('io');
+    if (io && updatedTask) {
+      io.to(`event-${updatedTask.eventId}`).emit('task-uncompleted', {
+        task: updatedTask,
+        teamId,
+      });
+    }
+
+    res.json({
+      success: true,
+      data: updatedTask,
+    });
+  }),
+);
+
 // Mark task as completed by team
 router.post(
   '/:id/complete',

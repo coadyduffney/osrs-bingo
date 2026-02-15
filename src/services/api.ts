@@ -350,6 +350,11 @@ export const tasksApi = {
       teamId,
       ...verificationData,
     }),
+
+  uncomplete: (taskId: string, teamId: string) =>
+    apiClient.post<ApiResponse<Task>>(`/api/tasks/${taskId}/uncomplete`, {
+      teamId,
+    }),
 };
 
 // XP Tracking API
