@@ -11,7 +11,7 @@ import eventRoutes from './routes/events.js';
 import teamRoutes from './routes/teams.js';
 import taskRoutes from './routes/tasks.js';
 import trackingRoutes from './routes/tracking.js';
-import { startScheduler } from './services/scheduler.js';
+import { startScheduler, setSocketIO } from './services/scheduler.js';
 
 dotenv.config();
 
@@ -32,6 +32,9 @@ const port = process.env.PORT || 3000;
 
 // Make io available to routes
 app.set('io', io);
+
+// Pass io to scheduler for emitting events
+setSocketIO(io);
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {

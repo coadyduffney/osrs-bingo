@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { trackingApi } from '../services/api';
+import { useSocket } from '../contexts/SocketContext';
 import Box from '@mui/joy/Box';
 import Typography from '@mui/joy/Typography';
 import Card from '@mui/joy/Card';
@@ -122,6 +123,25 @@ function XPProgress({ eventId, teams, isEventCreator = false }: XPProgressProps)
   useEffect(() => {
     fetchProgress();
   }, [eventId]);
+
+  // Listen for socket events from scheduled XP refresh
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleRefresh = (data: { eventId: string; playersUpdated: number }) => {
+      if (data.eventId === eventId) {
+        console.log('Received xp-snapshots-refreshed event, refreshing progress...');
+        fetchProgress();
+      }
+    };
+
+    socket.on('xp-snapshots-refreshed', handleRefresh);
+
+    return () => {
+      socket.off('xp-snapshots-refreshed', handleRefresh);
+    };
+  }, [socket, eventId]);
 
   if (loading) {
     return (

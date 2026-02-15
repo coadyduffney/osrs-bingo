@@ -3,9 +3,12 @@ import cronParser from 'cron-parser';
 import { db } from '../config/firebase.js';
 import { WiseOldManService } from './wiseOldMan.js';
 import { Timestamp } from 'firebase-admin/firestore';
+import { Server as SocketIOServer } from 'socket.io';
 
 const womService = new WiseOldManService();
 const DELAY_MS = 5500; // Delay between each player's update
+
+let io: SocketIOServer | null = null;
 
 interface ScheduledJob {
   eventId: string;
@@ -13,6 +16,10 @@ interface ScheduledJob {
 }
 
 const scheduledJobs: ScheduledJob[] = [];
+
+export function setSocketIO(socketIO: SocketIOServer) {
+  io = socketIO;
+}
 
 export function startScheduler() {
   console.log('⏰ XP Refresh Scheduler started');
@@ -213,6 +220,16 @@ export async function refreshEventSnapshots(eventId: string): Promise<{ success:
     }
 
     console.log(`✅ Scheduled XP refresh completed for event ${eventId}, ${processedRSNs.size} players updated`);
+
+    // Notify connected clients about the refresh
+    if (io) {
+      io.to(`event-${eventId}`).emit('xp-snapshots-refreshed', {
+        eventId,
+        playersUpdated: processedRSNs.size,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     return { success: true, playersUpdated: processedRSNs.size };
   } catch (error: any) {
     console.error(`❌ Scheduled XP refresh failed for event ${eventId}:`, error);
