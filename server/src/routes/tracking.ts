@@ -457,6 +457,15 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
       console.log(`⚠️ No snapshots were updated, not deleting old ones`);
     }
 
+    // Emit Socket.IO event to notify clients to refresh their XP data
+    const io = (req.app as any).get('io');
+    if (io && playersUpdated > 0) {
+      io.to(`event-${eventId}`).emit('xp-snapshots-refreshed', {
+        eventId,
+        playersUpdated,
+      });
+    }
+
     return res.json({
       success: true,
       data: {
@@ -663,6 +672,23 @@ router.post('/:eventId/check-xp-tasks', async (req: Request, res: Response, next
 
     if (completedTasks.length > 0) {
       await batch.commit();
+
+      // Emit Socket.IO events to all clients in the event room
+      const io = (req.app as any).get('io');
+      if (io) {
+        for (const completed of completedTasks) {
+          // Fetch the updated task
+          const updatedTaskDoc = await db.collection('tasks').doc(completed.taskId).get();
+          const updatedTask = updatedTaskDoc.data();
+          
+          if (updatedTask) {
+            io.to(`event-${eventId}`).emit('task-completed', {
+              task: { id: completed.taskId, ...updatedTask },
+              teamId: completed.teamId,
+            });
+          }
+        }
+      }
     }
 
     return res.json({

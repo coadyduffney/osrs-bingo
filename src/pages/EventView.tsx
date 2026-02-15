@@ -304,8 +304,25 @@ function EventView() {
         prev.map((t) => (t.id === data.task.id ? data.task : t)),
       );
 
-      // Show notification
+      // Update teams to reflect new completed task and score
       const completingTeam = teams.find((t) => t.id === data.teamId);
+      const task = data.task;
+      
+      if (completingTeam && !completingTeam.completedTaskIds.includes(task.id)) {
+        setTeams((prev) =>
+          prev.map((t) =>
+            t.id === data.teamId
+              ? {
+                  ...t,
+                  completedTaskIds: [...t.completedTaskIds, task.id],
+                  score: t.score + task.points,
+                }
+              : t
+          )
+        );
+      }
+
+      // Show notification
       if (completingTeam) {
         setSnackbar({
           open: true,
@@ -329,8 +346,25 @@ function EventView() {
         prev.map((t) => (t.id === data.task.id ? data.task : t)),
       );
 
-      // Show notification
+      // Update teams to remove completed task and reduce score
       const team = teams.find((t) => t.id === data.teamId);
+      const task = data.task;
+      
+      if (team && team.completedTaskIds.includes(task.id)) {
+        setTeams((prev) =>
+          prev.map((t) =>
+            t.id === data.teamId
+              ? {
+                  ...t,
+                  completedTaskIds: t.completedTaskIds.filter((id) => id !== task.id),
+                  score: Math.max(0, t.score - task.points),
+                }
+              : t
+          )
+        );
+      }
+
+      // Show notification
       if (team) {
         setSnackbar({
           open: true,
@@ -343,10 +377,27 @@ function EventView() {
     socket.on('task-completed', handleTaskCompleted);
     socket.on('task-uncompleted', handleTaskUncompleted);
 
+    // Listen for XP snapshots refresh to update XP progress
+    const handleXpSnapshotsRefreshed = async (data: { eventId: string; playersUpdated: number }) => {
+      if (data.eventId === id) {
+        console.log('XP snapshots refreshed, fetching new progress...');
+        try {
+          const response = await trackingApi.getProgress(id!);
+          if (response.success) {
+            setXpProgress(response.data.teams);
+          }
+        } catch (err) {
+          console.error('Failed to fetch XP progress after refresh:', err);
+        }
+      }
+    };
+    socket.on('xp-snapshots-refreshed', handleXpSnapshotsRefreshed);
+
     // Cleanup
     return () => {
       socket.off('task-completed', handleTaskCompleted);
       socket.off('task-uncompleted', handleTaskUncompleted);
+      socket.off('xp-snapshots-refreshed', handleXpSnapshotsRefreshed);
       leaveEvent(id);
     };
   }, [id, socket, joinEvent, leaveEvent, teams]);
