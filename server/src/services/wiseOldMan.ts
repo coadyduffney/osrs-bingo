@@ -95,6 +95,12 @@ const axiosInstance = axios.create({
   timeout: 10000,
 });
 
+if (process.env.WOM_API_KEY) {
+  console.log('✅ WOM API Key is configured');
+} else {
+  console.log('⚠️ WOM API Key is NOT configured');
+}
+
 async function axiosWithRetry<T>(
   fn: () => Promise<T>,
   maxRetries: number = 3,
