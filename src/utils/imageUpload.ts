@@ -210,10 +210,10 @@ export function generatePreviewUrl(file: File): Promise<string> {
  */
 export async function uploadVerificationImageWithFallback(
   file: File,
-  eventId: string,
-  taskId: string,
-  teamId: string,
-  userId: string,
+  _eventId: string,
+  _taskId: string,
+  _teamId: string,
+  _userId: string,
   onProgress?: (progress: number) => void,
 ): Promise<{ url: string; path: string; provider: 'imgbb' }> {
   console.log('🖼️ Starting image upload process...');
