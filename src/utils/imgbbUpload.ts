@@ -14,7 +14,8 @@ export async function uploadToImgBB(
   file: File,
   onProgress?: (progress: number) => void,
 ): Promise<ImgBBUploadResponse> {
-  const apiKey = import.meta.env.VITE_IMGBB_API_KEY;
+  // Use the define'd value from vite.config.ts
+  const apiKey = (window as any).__VITE_IMGBB_API_KEY__ || import.meta.env.VITE_IMGBB_API_KEY;
 
   console.log('ImgBB API Key loaded:', apiKey ? 'yes' : 'NO');
 
