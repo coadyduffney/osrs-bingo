@@ -17,8 +17,6 @@ export async function uploadToImgBB(
   // Use the define'd value from vite.config.ts
   const apiKey = (window as any).__VITE_IMGBB_API_KEY__ || import.meta.env.VITE_IMGBB_API_KEY;
 
-  console.log('ImgBB API Key loaded:', apiKey ? 'yes' : 'NO');
-
   if (!apiKey) {
     throw new Error(
       'ImgBB API key not configured. Please set VITE_IMGBB_API_KEY in your .env file.',
