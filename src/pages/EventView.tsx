@@ -377,14 +377,22 @@ function EventView() {
     socket.on('task-completed', handleTaskCompleted);
     socket.on('task-uncompleted', handleTaskUncompleted);
 
-    // Listen for XP snapshots refresh to update XP progress
+    // Listen for XP snapshots refresh to update XP progress and check tasks
     const handleXpSnapshotsRefreshed = async (data: { eventId: string; playersUpdated: number }) => {
       if (data.eventId === id) {
         console.log('XP snapshots refreshed, fetching new progress...');
         try {
-          const response = await trackingApi.getProgress(id!);
-          if (response.success) {
-            setXpProgress(response.data.teams);
+          const [progressResponse, checkResponse] = await Promise.all([
+            trackingApi.getProgress(id!),
+            trackingApi.checkXPTasks(id!),
+          ]);
+          
+          if (progressResponse.success) {
+            setXpProgress(progressResponse.data.teams);
+          }
+          
+          if (checkResponse.success && checkResponse.data.completedTasks.length > 0) {
+            console.log('Auto-completed XP tasks:', checkResponse.data.completedTasks);
           }
         } catch (err) {
           console.error('Failed to fetch XP progress after refresh:', err);
