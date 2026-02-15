@@ -2,7 +2,17 @@ version: "3.9"
 
 services:
   osrs-bingo:
-    build: .
+    build:
+      context: .
+      args:
+        - VITE_IMGBB_API_KEY=${VITE_IMGBB_API_KEY}
+        - VITE_FIREBASE_API_KEY=${VITE_FIREBASE_API_KEY}
+        - VITE_FIREBASE_AUTH_DOMAIN=${VITE_FIREBASE_AUTH_DOMAIN}
+        - VITE_FIREBASE_PROJECT_ID=${VITE_FIREBASE_PROJECT_ID}
+        - VITE_FIREBASE_STORAGE_BUCKET=${VITE_FIREBASE_STORAGE_BUCKET}
+        - VITE_FIREBASE_MESSAGING_SENDER_ID=${VITE_FIREBASE_MESSAGING_SENDER_ID}
+        - VITE_FIREBASE_APP_ID=${VITE_FIREBASE_APP_ID}
+        - VITE_API_URL=${FRONTEND_URL}
     container_name: osrs-bingo
     ports:
       - "3010:3000"
