@@ -3,9 +3,13 @@ import { z } from 'zod';
 import { ApiErrorClass, asyncHandler } from '../middleware/errorHandler.js';
 import { TeamRepository } from '../repositories/index.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { db } from '../config/firebase.js';
+import { WiseOldManService } from '../services/wiseOldMan.js';
+import { Timestamp } from 'firebase-admin/firestore';
 
 const router = Router();
 const teamRepo = new TeamRepository();
+const womService = new WiseOldManService();
 
 // Validation schemas
 const createTeamSchema = z.object({
@@ -93,6 +97,42 @@ router.post('/:id/members', authMiddleware, asyncHandler(async (req: Request, re
   }
 
   await teamRepo.addMember(req.params.id, userId);
+  
+  // Check if event is tracking XP - create baseline snapshot if so
+  const eventDoc = await db.collection('events').doc(team.eventId).get();
+  const eventData = eventDoc.data();
+  
+  if (eventData?.trackingEnabled) {
+    // Get user's RSN
+    const userDoc = await db.collection('users').doc(userId).get();
+    const userData = userDoc.data();
+    
+    if (userData?.rsn) {
+      try {
+        console.log(`📋 Creating baseline snapshot for new team member: ${userData.rsn}`);
+        const snapshot = await womService.updatePlayerAndGetSnapshot(userData.rsn);
+        
+        if (snapshot) {
+          await db.collection('playerSnapshots').add({
+            eventId: team.eventId,
+            teamId: team.id,
+            userId: userId,
+            rsn: userData.rsn,
+            snapshotType: 'baseline',
+            capturedAt: Timestamp.now(),
+            skills: snapshot.skills,
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
+          });
+          console.log(`✅ Baseline snapshot created for ${userData.rsn}`);
+        }
+      } catch (error) {
+        console.error(`Failed to create baseline snapshot for ${userData.rsn}:`, error);
+        // Don't fail the team join if snapshot creation fails
+      }
+    }
+  }
+  
   const updatedTeam = await teamRepo.findById(req.params.id);
 
   res.json({
@@ -124,6 +164,42 @@ router.post('/join', authMiddleware, asyncHandler(async (req: Request, res: Resp
     }
 
     await teamRepo.addMember(team.id, userId);
+    
+    // Check if event is tracking XP - create baseline snapshot if so
+    const eventDoc = await db.collection('events').doc(team.eventId).get();
+    const eventData = eventDoc.data();
+    
+    if (eventData?.trackingEnabled) {
+      // Get user's RSN
+      const userDoc = await db.collection('users').doc(userId).get();
+      const userData = userDoc.data();
+      
+      if (userData?.rsn) {
+        try {
+          console.log(`📋 Creating baseline snapshot for new team member: ${userData.rsn}`);
+          const snapshot = await womService.updatePlayerAndGetSnapshot(userData.rsn);
+          
+          if (snapshot) {
+            await db.collection('playerSnapshots').add({
+              eventId: team.eventId,
+              teamId: team.id,
+              userId: userId,
+              rsn: userData.rsn,
+              snapshotType: 'baseline',
+              capturedAt: Timestamp.now(),
+              skills: snapshot.skills,
+              createdAt: Timestamp.now(),
+              updatedAt: Timestamp.now(),
+            });
+            console.log(`✅ Baseline snapshot created for ${userData.rsn}`);
+          }
+        } catch (error) {
+          console.error(`Failed to create baseline snapshot for ${userData.rsn}:`, error);
+          // Don't fail the team join if snapshot creation fails
+        }
+      }
+    }
+    
     const updatedTeam = await teamRepo.findById(team.id);
 
     res.json({
