@@ -217,8 +217,7 @@ export async function uploadVerificationImageWithFallback(
   onProgress?: (progress: number) => void,
 ): Promise<{ url: string; path: string; provider: 'firebase' | 'imgbb' }> {
   // Check if ImgBB is configured (primary method - simpler and free)
-  // Use define'd value from vite.config.ts for Docker compatibility
-  const imgbbApiKey = (window as any).__VITE_IMGBB_API_KEY__ || import.meta.env.VITE_IMGBB_API_KEY;
+  const imgbbApiKey = import.meta.env.VITE_IMGBB_API_KEY;
 
   if (imgbbApiKey) {
     // Use ImgBB as primary if configured
