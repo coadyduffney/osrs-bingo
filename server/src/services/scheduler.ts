@@ -188,10 +188,9 @@ export async function refreshEventSnapshots(eventId: string): Promise<{ success:
       
       // Find which old snapshots to delete (all except failed players)
       const failedSet = new Set(failedPlayers);
-      const oldSnapshotsToDelete = oldSnapshotRefs.filter((ref) => {
-        const doc = oldCurrentSnapshots.docs.find(d => d.ref.id === ref.id);
-        return doc && !failedSet.has(doc.data().rsn);
-      });
+      const oldSnapshotsToDelete = oldCurrentSnapshots.docs
+        .filter(doc => !failedSet.has(doc.data().rsn))
+        .map(doc => doc.ref);
       
       if (oldSnapshotsToDelete.length > 0) {
         console.log(`🗑️ Deleting ${oldSnapshotsToDelete.length} old current snapshots (for successful updates)...`);
