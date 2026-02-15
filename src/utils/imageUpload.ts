@@ -205,8 +205,8 @@ export function generatePreviewUrl(file: File): Promise<string> {
 }
 
 /**
- * Upload verification image with ImgBB fallback
- * Tries ImgBB first (if configured), falls back to Firebase Storage
+ * Upload verification image with ImgBB
+ * Uses ImgBB as the image hosting service
  */
 export async function uploadVerificationImageWithFallback(
   file: File,
@@ -215,40 +215,55 @@ export async function uploadVerificationImageWithFallback(
   teamId: string,
   userId: string,
   onProgress?: (progress: number) => void,
-): Promise<{ url: string; path: string; provider: 'firebase' | 'imgbb' }> {
-  // Check if ImgBB is configured (primary method - simpler and free)
-  const imgbbApiKey = import.meta.env.VITE_IMGBB_API_KEY;
+): Promise<{ url: string; path: string; provider: 'imgbb' }> {
+  console.log('🖼️ Starting image upload process...');
+  console.log('File details:', {
+    name: file.name,
+    type: file.type,
+    size: file.size,
+    sizeInMB: (file.size / 1024 / 1024).toFixed(2) + 'MB',
+  });
 
-  if (imgbbApiKey) {
-    // Use ImgBB as primary if configured
-    try {
-      const result = await uploadToImgBB(file, onProgress);
-      return {
-        url: result.url,
-        path: `imgbb:${result.deleteUrl}`,
-        provider: 'imgbb',
-      };
-    } catch (error) {
-      console.error('ImgBB upload failed:', error);
-      throw new Error('Image upload failed. Please try again.');
-    }
+  // Check if ImgBB API key is configured
+  const imgbbApiKey = import.meta.env.VITE_IMGBB_API_KEY;
+  
+  console.log('🔑 Checking ImgBB API key configuration...');
+  console.log('API Key present:', imgbbApiKey ? '✅ Yes' : '❌ No');
+  console.log('API Key length:', imgbbApiKey ? imgbbApiKey.length : 0);
+  console.log('API Key preview:', imgbbApiKey ? `${imgbbApiKey.substring(0, 8)}...` : 'undefined');
+  console.log('Environment mode:', import.meta.env.MODE);
+  console.log('All VITE env vars:', Object.keys(import.meta.env).filter(k => k.startsWith('VITE_')));
+
+  if (!imgbbApiKey) {
+    console.error('❌ ImgBB API key is not configured!');
+    throw new Error('Image upload not configured. ImgBB API key is missing.');
   }
 
-  // Try Firebase Storage if ImgBB not configured
+  console.log('✅ ImgBB API key found, proceeding with upload...');
+
   try {
-    const result = await uploadVerificationImage(
-      file,
-      eventId,
-      taskId,
-      teamId,
-      userId,
-      onProgress,
-    );
-    return { ...result, provider: 'firebase' };
-  } catch (firebaseError) {
-    console.error('Firebase Storage failed:', firebaseError);
-    throw new Error(
-      'Image upload failed. Firebase Storage may not be enabled. Consider using ImgBB instead.',
-    );
+    console.log('📤 Calling ImgBB upload function...');
+    const result = await uploadToImgBB(file, onProgress);
+    
+    console.log('✅ ImgBB upload successful!');
+    console.log('Upload result:', {
+      url: result.url,
+      deleteUrl: result.deleteUrl ? `${result.deleteUrl.substring(0, 30)}...` : 'none',
+    });
+    
+    return {
+      url: result.url,
+      path: `imgbb:${result.deleteUrl}`,
+      provider: 'imgbb',
+    };
+  } catch (error: any) {
+    console.error('❌ ImgBB upload failed with error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack,
+      response: error.response?.data,
+    });
+    throw new Error(`Image upload failed: ${error.message || 'Unknown error'}`);
   }
 }
