@@ -4,6 +4,7 @@ import { db } from '../config/firebase.js';
 import { WiseOldManService } from './wiseOldMan.js';
 import { Timestamp } from 'firebase-admin/firestore';
 import { Server as SocketIOServer } from 'socket.io';
+import { notifyRefreshError } from './discord.js';
 
 const womService = new WiseOldManService();
 const DELAY_MS = 5500; // Delay between each player's update
@@ -224,6 +225,7 @@ export async function refreshEventSnapshots(eventId: string): Promise<{ success:
 
     if (failedPlayers.length > 0) {
       console.warn(`⚠️ Failed to update ${failedPlayers.length} players (${failedPlayers.join(', ')}), keeping their old snapshots`);
+      notifyRefreshError(eventId, `Failed to update ${failedPlayers.length} player(s)`, failedPlayers);
     }
 
     console.log(`✅ Scheduled XP refresh completed for event ${eventId}, ${processedRSNs.size} players updated`);
@@ -240,6 +242,7 @@ export async function refreshEventSnapshots(eventId: string): Promise<{ success:
     return { success: true, playersUpdated: processedRSNs.size };
   } catch (error: any) {
     console.error(`❌ Scheduled XP refresh failed for event ${eventId}:`, error);
+    notifyRefreshError(eventId, error.message);
     return { success: false, error: error.message };
   }
 }
