@@ -119,11 +119,34 @@ router.post('/:eventId/start', authMiddleware, async (req: Request, res: Respons
     console.log(`🔄 Updating ${usernames.length} unique players (from ${allUsernames.length} entries) individually...`);
     
     const DELAY_MS = 5500; // 5.5 seconds between each update
+    const batch = db.batch();
+    const now = Timestamp.now();
+
     for (let i = 0; i < usernames.length; i++) {
       const username = usernames[i];
       try {
-        console.log(`  Updating ${username} (${i + 1}/${usernames.length})...`);
-        await womService.updatePlayer(username);
+        console.log(`  Updating and fetching snapshot for ${username} (${i + 1}/${usernames.length})...`);
+        const snapshot = await womService.updatePlayerAndGetSnapshot(username);
+        
+        if (snapshot) {
+          // Find the member data for this username
+          const member = membersWithRSN.find(m => m.rsn === username);
+          if (member) {
+            const snapshotData = {
+              eventId,
+              teamId: member.teamId,
+              userId: member.userId,
+              rsn: username,
+              snapshotType: 'baseline',
+              capturedAt: now,
+              skills: snapshot.skills,
+              createdAt: now,
+              updatedAt: now,
+            };
+            const snapshotRef = db.collection('playerSnapshots').doc();
+            batch.set(snapshotRef, snapshotData);
+          }
+        }
         console.log(`  ✅ Updated ${username}`);
         
         // Wait before next update (except for last player)
@@ -136,38 +159,7 @@ router.post('/:eventId/start', authMiddleware, async (req: Request, res: Respons
       }
     }
 
-    // Wait a bit for WOM to process the final update
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    // Create baseline snapshots for all members
-    const batch = db.batch();
-    const now = Timestamp.now();
-
-    for (const member of membersWithRSN) {
-      try {
-        const snapshot = await womService.getLatestSnapshot(member.rsn);
-
-        if (snapshot) {
-          const snapshotData = {
-            eventId,
-            teamId: member.teamId,
-            userId: member.userId,
-            rsn: member.rsn,
-            snapshotType: 'baseline',
-            capturedAt: now,
-            skills: snapshot.skills,
-            createdAt: now,
-            updatedAt: now,
-          };
-
-          const snapshotRef = db.collection('playerSnapshots').doc();
-          batch.set(snapshotRef, snapshotData);
-        }
-      } catch (error) {
-        console.error(`Failed to get snapshot for ${member.rsn}:`, error);
-        // Continue with other players
-      }
-    }
+    await batch.commit();
 
     // Update event to enable tracking
     batch.set(eventRef, {
@@ -234,11 +226,35 @@ router.post('/:eventId/end', authMiddleware, async (req: Request, res: Response,
     console.log(`🔄 Updating ${usernames.length} unique players (from ${allUsernames.length} snapshots) individually for final snapshot...`);
     
     const DELAY_MS = 5500;
+    const batch = db.batch();
+    const now = Timestamp.now();
+
     for (let i = 0; i < usernames.length; i++) {
       const username = usernames[i];
       try {
-        console.log(`  Updating ${username} (${i + 1}/${usernames.length})...`);
-        await womService.updatePlayer(username);
+        console.log(`  Updating and fetching snapshot for ${username} (${i + 1}/${usernames.length})...`);
+        const snapshot = await womService.updatePlayerAndGetSnapshot(username);
+
+        if (snapshot) {
+          // Find the baseline doc to get teamId and userId
+          const baselineDoc = baselineSnapshots.docs.find(doc => doc.data().rsn === username);
+          if (baselineDoc) {
+            const data = baselineDoc.data();
+            const snapshotData = {
+              eventId,
+              teamId: data.teamId,
+              userId: data.userId,
+              rsn: username,
+              snapshotType: 'current',
+              capturedAt: now,
+              skills: snapshot.skills,
+              createdAt: now,
+              updatedAt: now,
+            };
+            const snapshotRef = db.collection('playerSnapshots').doc();
+            batch.set(snapshotRef, snapshotData);
+          }
+        }
         console.log(`  ✅ Updated ${username}`);
         
         if (i < usernames.length - 1) {
@@ -246,47 +262,6 @@ router.post('/:eventId/end', authMiddleware, async (req: Request, res: Response,
         }
       } catch (error: any) {
         console.error(`  ❌ Failed to update ${username}:`, error.message);
-      }
-    }
-    
-    // Wait for WOM to process
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    // Create final current snapshots - deduplicate by RSN
-    const batch = db.batch();
-    const now = Timestamp.now();
-    const processedRSNs = new Set<string>();
-
-    for (const doc of baselineSnapshots.docs) {
-      const data = doc.data();
-      
-      // Skip if we already processed this RSN
-      if (processedRSNs.has(data.rsn)) {
-        continue;
-      }
-      processedRSNs.add(data.rsn);
-      
-      try {
-        const snapshot = await womService.getLatestSnapshot(data.rsn);
-
-        if (snapshot) {
-          const snapshotData = {
-            eventId,
-            teamId: data.teamId,
-            userId: data.userId,
-            rsn: data.rsn,
-            snapshotType: 'current',
-            capturedAt: now,
-            skills: snapshot.skills,
-            createdAt: now,
-            updatedAt: now,
-          };
-
-          const snapshotRef = db.collection('playerSnapshots').doc();
-          batch.set(snapshotRef, snapshotData);
-        }
-      } catch (error) {
-        console.error(`Failed to get final snapshot for ${data.rsn}:`, error);
       }
     }
 
@@ -355,11 +330,37 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
     console.log(`🔄 Refreshing ${usernames.length} unique players (from ${allUsernames.length} snapshots) individually...`);
     
     const DELAY_MS = 5500;
+    const batch = db.batch();
+    const now = Timestamp.now();
+    let playersUpdated = 0;
+
     for (let i = 0; i < usernames.length; i++) {
       const username = usernames[i];
       try {
-        console.log(`  Updating ${username} (${i + 1}/${usernames.length})...`);
-        await womService.updatePlayer(username);
+        console.log(`  Updating and fetching snapshot for ${username} (${i + 1}/${usernames.length})...`);
+        const snapshot = await womService.updatePlayerAndGetSnapshot(username);
+
+        if (snapshot) {
+          // Find the baseline doc to get teamId and userId
+          const baselineDoc = baselineSnapshots.docs.find(doc => doc.data().rsn === username);
+          if (baselineDoc) {
+            const data = baselineDoc.data();
+            const snapshotData = {
+              eventId,
+              teamId: data.teamId,
+              userId: data.userId,
+              rsn: username,
+              snapshotType: 'current',
+              capturedAt: now,
+              skills: snapshot.skills,
+              createdAt: now,
+              updatedAt: now,
+            };
+            const snapshotRef = db.collection('playerSnapshots').doc();
+            batch.set(snapshotRef, snapshotData);
+            playersUpdated++;
+          }
+        }
         console.log(`  ✅ Updated ${username}`);
         
         if (i < usernames.length - 1) {
@@ -370,54 +371,13 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
       }
     }
 
-    // Wait for WOM to process
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    // Create new current snapshots - deduplicate by RSN
-    const batch = db.batch();
-    const now = Timestamp.now();
-    const processedRSNs = new Set<string>();
-
-    for (const doc of baselineSnapshots.docs) {
-      const data = doc.data();
-      
-      // Skip if we already processed this RSN
-      if (processedRSNs.has(data.rsn)) {
-        continue;
-      }
-      processedRSNs.add(data.rsn);
-      
-      try {
-        const snapshot = await womService.getLatestSnapshot(data.rsn);
-
-        if (snapshot) {
-          const snapshotData = {
-            eventId,
-            teamId: data.teamId,
-            userId: data.userId,
-            rsn: data.rsn,
-            snapshotType: 'current',
-            capturedAt: now,
-            skills: snapshot.skills,
-            createdAt: now,
-            updatedAt: now,
-          };
-
-          const snapshotRef = db.collection('playerSnapshots').doc();
-          batch.set(snapshotRef, snapshotData);
-        }
-      } catch (error) {
-        console.error(`Failed to refresh snapshot for ${data.rsn}:`, error);
-      }
-    }
-
     await batch.commit();
 
     return res.json({
       success: true,
       data: {
         message: 'Snapshots refreshed',
-        playersUpdated: processedRSNs.size,
+        playersUpdated: playersUpdated,
       },
     });
   } catch (error) {
