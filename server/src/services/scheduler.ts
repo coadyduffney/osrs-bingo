@@ -7,6 +7,8 @@ import { Server as SocketIOServer } from 'socket.io';
 
 const womService = new WiseOldManService();
 const DELAY_MS = 5500; // Delay between each player's update
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 10000; // Longer delay before retry
 
 let io: SocketIOServer | null = null;
 
@@ -132,52 +134,69 @@ export async function refreshEventSnapshots(eventId: string): Promise<{ success:
     const processedRSNs = new Set<string>();
     const failedPlayers: string[] = [];
 
+    const updatePlayer = async (username: string): Promise<boolean> => {
+      console.log(`  🔄 Updating and fetching snapshot for ${username}...`);
+      const snapshot = await womService.updatePlayerAndGetSnapshot(username);
+
+      if (snapshot) {
+        processedRSNs.add(username);
+        
+        const baselineDoc = baselineSnapshots.docs.find(
+          (doc) => doc.data().rsn === username
+        );
+        
+        if (baselineDoc) {
+          const baselineData = baselineDoc.data();
+          const snapshotData = {
+            eventId,
+            teamId: baselineData.teamId,
+            userId: baselineData.userId,
+            rsn: username,
+            snapshotType: 'current',
+            capturedAt: now,
+            skills: snapshot.skills,
+            createdAt: now,
+            updatedAt: now,
+          };
+
+          const snapshotRef = db.collection('playerSnapshots').doc();
+          batch.set(snapshotRef, snapshotData);
+        }
+        console.log(`  ✅ Updated ${username}`);
+        return true;
+      }
+      return false;
+    };
+
     for (let i = 0; i < usernames.length; i++) {
       const username = usernames[i];
-      try {
-        console.log(`  🔄 [${i + 1}/${usernames.length}] Updating and fetching snapshot for ${username}...`);
-        const snapshot = await womService.updatePlayerAndGetSnapshot(username);
+      let success = false;
+      let lastError: string = '';
 
-        if (snapshot) {
-          processedRSNs.add(username);
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          success = await updatePlayer(username);
+          if (success) break;
+        } catch (error: any) {
+          lastError = error.message;
+          console.error(`  ❌ Failed to update ${username} (attempt ${attempt + 1}/${MAX_RETRIES + 1}):`, lastError);
           
-          // Find the baseline snapshot for this player to get teamId and userId
-          const baselineDoc = baselineSnapshots.docs.find(
-            (doc) => doc.data().rsn === username
-          );
-          
-          if (baselineDoc) {
-            const baselineData = baselineDoc.data();
-            const snapshotData = {
-              eventId,
-              teamId: baselineData.teamId,
-              userId: baselineData.userId,
-              rsn: username,
-              snapshotType: 'current',
-              capturedAt: now,
-              skills: snapshot.skills,
-              createdAt: now,
-              updatedAt: now,
-            };
-
-            const snapshotRef = db.collection('playerSnapshots').doc();
-            batch.set(snapshotRef, snapshotData);
+          if (attempt < MAX_RETRIES) {
+            console.log(`  ⏳ Waiting ${RETRY_DELAY_MS/1000}s before retry...`);
+            await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
           }
-          console.log(`  ✅ Updated ${username}`);
         }
+      }
 
-        // Wait between each player to avoid rate limiting
-        if (i < usernames.length - 1) {
-          console.log(`  ⏳ Waiting ${DELAY_MS/1000}s before next player...`);
-          await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
-        }
-      } catch (error: any) {
-        console.error(`  ❌ Failed to update ${username}:`, error.message);
+      if (!success) {
+        console.error(`  ❌ Failed to update ${username} after ${MAX_RETRIES + 1} attempts:`, lastError);
         failedPlayers.push(username);
-        // Still wait even on failure to avoid hammering the API
-        if (i < usernames.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
-        }
+      }
+
+      // Wait between each player to avoid rate limiting (even on failure)
+      if (i < usernames.length - 1) {
+        console.log(`  ⏳ Waiting ${DELAY_MS/1000}s before next player...`);
+        await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
       }
     }
 

@@ -7,6 +7,10 @@ import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 const router = Router();
 const womService = new WiseOldManService();
 
+const DELAY_MS = 5500;
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 10000;
+
 // Use existing WiseOldMan group for all events (Bibzys Bingo)
 const WOM_GROUP_ID = parseInt(process.env.WOM_GROUP_ID || '22343');
 const WOM_VERIFICATION_CODE = process.env.WOM_VERIFICATION_CODE || '';
@@ -118,44 +122,63 @@ router.post('/:eventId/start', authMiddleware, async (req: Request, res: Respons
     const usernames = [...new Set(allUsernames)]; // Remove duplicates
     console.log(`🔄 Updating ${usernames.length} unique players (from ${allUsernames.length} entries) individually...`);
     
-    const DELAY_MS = 5500; // 5.5 seconds between each update
     const batch = db.batch();
     const now = Timestamp.now();
+    const failedPlayers: string[] = [];
+
+    const updatePlayer = async (username: string): Promise<boolean> => {
+      console.log(`  Updating and fetching snapshot for ${username}...`);
+      const snapshot = await womService.updatePlayerAndGetSnapshot(username);
+      
+      if (snapshot) {
+        const member = membersWithRSN.find(m => m.rsn === username);
+        if (member) {
+          const snapshotData = {
+            eventId,
+            teamId: member.teamId,
+            userId: member.userId,
+            rsn: username,
+            snapshotType: 'baseline',
+            capturedAt: now,
+            skills: snapshot.skills,
+            createdAt: now,
+            updatedAt: now,
+          };
+          const snapshotRef = db.collection('playerSnapshots').doc();
+          batch.set(snapshotRef, snapshotData);
+        }
+      }
+      console.log(`  ✅ Updated ${username}`);
+      return !!snapshot;
+    };
 
     for (let i = 0; i < usernames.length; i++) {
       const username = usernames[i];
-      try {
-        console.log(`  Updating and fetching snapshot for ${username} (${i + 1}/${usernames.length})...`);
-        const snapshot = await womService.updatePlayerAndGetSnapshot(username);
-        
-        if (snapshot) {
-          // Find the member data for this username
-          const member = membersWithRSN.find(m => m.rsn === username);
-          if (member) {
-            const snapshotData = {
-              eventId,
-              teamId: member.teamId,
-              userId: member.userId,
-              rsn: username,
-              snapshotType: 'baseline',
-              capturedAt: now,
-              skills: snapshot.skills,
-              createdAt: now,
-              updatedAt: now,
-            };
-            const snapshotRef = db.collection('playerSnapshots').doc();
-            batch.set(snapshotRef, snapshotData);
+      let success = false;
+      let lastError: string = '';
+
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          success = await updatePlayer(username);
+          if (success) break;
+        } catch (error: any) {
+          lastError = error.message;
+          console.error(`  ❌ Failed to update ${username} (attempt ${attempt + 1}/${MAX_RETRIES + 1}):`, lastError);
+          
+          if (attempt < MAX_RETRIES) {
+            console.log(`  ⏳ Waiting ${RETRY_DELAY_MS/1000}s before retry...`);
+            await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
           }
         }
-        console.log(`  ✅ Updated ${username}`);
-        
-        // Wait before next update (except for last player)
-        if (i < usernames.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
-        }
-      } catch (error: any) {
-        console.error(`  ❌ Failed to update ${username}:`, error.message);
-        // Continue with other players
+      }
+
+      if (!success) {
+        console.error(`  ❌ Failed to update ${username} after ${MAX_RETRIES + 1} attempts:`, lastError);
+        failedPlayers.push(username);
+      }
+      
+      if (i < usernames.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
       }
     }
 
@@ -225,43 +248,64 @@ router.post('/:eventId/end', authMiddleware, async (req: Request, res: Response,
     const usernames = [...new Set(allUsernames)]; // Remove duplicates
     console.log(`🔄 Updating ${usernames.length} unique players (from ${allUsernames.length} snapshots) individually for final snapshot...`);
     
-    const DELAY_MS = 5500;
     const batch = db.batch();
     const now = Timestamp.now();
+    const failedPlayers: string[] = [];
+
+    const updatePlayer = async (username: string): Promise<boolean> => {
+      console.log(`  Updating and fetching snapshot for ${username}...`);
+      const snapshot = await womService.updatePlayerAndGetSnapshot(username);
+
+      if (snapshot) {
+        const baselineDoc = baselineSnapshots.docs.find(doc => doc.data().rsn === username);
+        if (baselineDoc) {
+          const data = baselineDoc.data();
+          const snapshotData = {
+            eventId,
+            teamId: data.teamId,
+            userId: data.userId,
+            rsn: username,
+            snapshotType: 'current',
+            capturedAt: now,
+            skills: snapshot.skills,
+            createdAt: now,
+            updatedAt: now,
+          };
+          const snapshotRef = db.collection('playerSnapshots').doc();
+          batch.set(snapshotRef, snapshotData);
+        }
+      }
+      console.log(`  ✅ Updated ${username}`);
+      return !!snapshot;
+    };
 
     for (let i = 0; i < usernames.length; i++) {
       const username = usernames[i];
-      try {
-        console.log(`  Updating and fetching snapshot for ${username} (${i + 1}/${usernames.length})...`);
-        const snapshot = await womService.updatePlayerAndGetSnapshot(username);
+      let success = false;
+      let lastError: string = '';
 
-        if (snapshot) {
-          // Find the baseline doc to get teamId and userId
-          const baselineDoc = baselineSnapshots.docs.find(doc => doc.data().rsn === username);
-          if (baselineDoc) {
-            const data = baselineDoc.data();
-            const snapshotData = {
-              eventId,
-              teamId: data.teamId,
-              userId: data.userId,
-              rsn: username,
-              snapshotType: 'current',
-              capturedAt: now,
-              skills: snapshot.skills,
-              createdAt: now,
-              updatedAt: now,
-            };
-            const snapshotRef = db.collection('playerSnapshots').doc();
-            batch.set(snapshotRef, snapshotData);
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          success = await updatePlayer(username);
+          if (success) break;
+        } catch (error: any) {
+          lastError = error.message;
+          console.error(`  ❌ Failed to update ${username} (attempt ${attempt + 1}/${MAX_RETRIES + 1}):`, lastError);
+          
+          if (attempt < MAX_RETRIES) {
+            console.log(`  ⏳ Waiting ${RETRY_DELAY_MS/1000}s before retry...`);
+            await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
           }
         }
-        console.log(`  ✅ Updated ${username}`);
-        
-        if (i < usernames.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
-        }
-      } catch (error: any) {
-        console.error(`  ❌ Failed to update ${username}:`, error.message);
+      }
+
+      if (!success) {
+        console.error(`  ❌ Failed to update ${username} after ${MAX_RETRIES + 1} attempts:`, lastError);
+        failedPlayers.push(username);
+      }
+      
+      if (i < usernames.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
       }
     }
 
@@ -323,47 +367,66 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
     const usernames = [...new Set(allUsernames)]; // Remove duplicates
     console.log(`🔄 Refreshing ${usernames.length} unique players (from ${allUsernames.length} snapshots) individually...`);
     
-    const DELAY_MS = 5500;
     const newSnapshotsBatch = db.batch();
     const now = Timestamp.now();
     let playersUpdated = 0;
     const failedPlayers: string[] = [];
 
+    const updatePlayer = async (username: string): Promise<boolean> => {
+      console.log(`  Updating and fetching snapshot for ${username}...`);
+      const snapshot = await womService.updatePlayerAndGetSnapshot(username);
+
+      if (snapshot) {
+        const baselineDoc = baselineSnapshots.docs.find(doc => doc.data().rsn === username);
+        if (baselineDoc) {
+          const data = baselineDoc.data();
+          const snapshotData = {
+            eventId,
+            teamId: data.teamId,
+            userId: data.userId,
+            rsn: username,
+            snapshotType: 'current',
+            capturedAt: now,
+            skills: snapshot.skills,
+            createdAt: now,
+            updatedAt: now,
+          };
+          const snapshotRef = db.collection('playerSnapshots').doc();
+          newSnapshotsBatch.set(snapshotRef, snapshotData);
+          playersUpdated++;
+        }
+      }
+      console.log(`  ✅ Updated ${username}`);
+      return !!snapshot;
+    };
+
     for (let i = 0; i < usernames.length; i++) {
       const username = usernames[i];
-      try {
-        console.log(`  Updating and fetching snapshot for ${username} (${i + 1}/${usernames.length})...`);
-        const snapshot = await womService.updatePlayerAndGetSnapshot(username);
+      let success = false;
+      let lastError: string = '';
 
-        if (snapshot) {
-          // Find the baseline doc to get teamId and userId
-          const baselineDoc = baselineSnapshots.docs.find(doc => doc.data().rsn === username);
-          if (baselineDoc) {
-            const data = baselineDoc.data();
-            const snapshotData = {
-              eventId,
-              teamId: data.teamId,
-              userId: data.userId,
-              rsn: username,
-              snapshotType: 'current',
-              capturedAt: now,
-              skills: snapshot.skills,
-              createdAt: now,
-              updatedAt: now,
-            };
-            const snapshotRef = db.collection('playerSnapshots').doc();
-            newSnapshotsBatch.set(snapshotRef, snapshotData);
-            playersUpdated++;
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          success = await updatePlayer(username);
+          if (success) break;
+        } catch (error: any) {
+          lastError = error.message;
+          console.error(`  ❌ Failed to update ${username} (attempt ${attempt + 1}/${MAX_RETRIES + 1}):`, lastError);
+          
+          if (attempt < MAX_RETRIES) {
+            console.log(`  ⏳ Waiting ${RETRY_DELAY_MS/1000}s before retry...`);
+            await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
           }
         }
-        console.log(`  ✅ Updated ${username}`);
-        
-        if (i < usernames.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
-        }
-      } catch (error: any) {
-        console.error(`  ❌ Failed to update ${username}:`, error.message);
+      }
+
+      if (!success) {
+        console.error(`  ❌ Failed to update ${username} after ${MAX_RETRIES + 1} attempts:`, lastError);
         failedPlayers.push(username);
+      }
+      
+      if (i < usernames.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
       }
     }
 

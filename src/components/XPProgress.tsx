@@ -133,6 +133,7 @@ function XPProgress({ eventId, teams, isEventCreator = false }: XPProgressProps)
       if (data.eventId === eventId) {
         console.log('Received xp-snapshots-refreshed event, refreshing progress...');
         fetchProgress();
+        handleCheckTasks();
       }
     };
 
