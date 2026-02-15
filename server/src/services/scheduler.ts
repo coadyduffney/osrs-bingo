@@ -173,8 +173,10 @@ export async function refreshEventSnapshots(eventId: string): Promise<{ success:
       const username = usernames[i];
       let success = false;
       let lastError: string = '';
+      let attempts = 0;
 
       for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        attempts++;
         try {
           success = await updatePlayer(username);
           if (success) break;
@@ -192,6 +194,8 @@ export async function refreshEventSnapshots(eventId: string): Promise<{ success:
       if (!success) {
         console.error(`  ❌ Failed to update ${username} after ${MAX_RETRIES + 1} attempts:`, lastError);
         failedPlayers.push(username);
+      } else if (attempts > 1) {
+        console.warn(`  ⚠️ ${username} required ${attempts} attempts (had retries)`);
       }
 
       // Wait between each player to avoid rate limiting (even on failure)
@@ -226,9 +230,9 @@ export async function refreshEventSnapshots(eventId: string): Promise<{ success:
     if (failedPlayers.length > 0) {
       console.warn(`⚠️ Failed to update ${failedPlayers.length} players (${failedPlayers.join(', ')}), keeping their old snapshots`);
       notifyRefreshError(eventId, `Failed to update ${failedPlayers.length} player(s)`, failedPlayers);
+    } else if (processedRSNs.size > 0) {
+      console.log(`✅ Scheduled XP refresh completed for event ${eventId}, ${processedRSNs.size} players updated`);
     }
-
-    console.log(`✅ Scheduled XP refresh completed for event ${eventId}, ${processedRSNs.size} players updated`);
 
     // Notify connected clients about the refresh
     if (io) {

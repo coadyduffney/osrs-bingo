@@ -3,6 +3,10 @@ import fetch from 'node-fetch';
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 const DISCORD_NOTIFICATION_USER_IDS = process.env.DISCORD_NOTIFICATION_USER_IDS?.split(',').map(id => id.trim()) || [];
 
+console.log('Discord configuration loaded:');
+console.log('  - Webhook URL configured:', !!DISCORD_WEBHOOK_URL);
+console.log('  - Notification users:', DISCORD_NOTIFICATION_USER_IDS.length > 0 ? DISCORD_NOTIFICATION_USER_IDS : 'none');
+
 interface DiscordMessage {
   content?: string;
   embeds?: DiscordEmbed[];
