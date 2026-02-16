@@ -91,9 +91,7 @@ function XPProgress({ eventId, teams, isEventCreator = false }: XPProgressProps)
       await trackingApi.refreshSnapshots(eventId);
       console.log('Snapshots refreshed, fetching new progress...');
       await fetchProgress();
-      // Auto-check tasks after refresh
-      console.log('Checking XP tasks...');
-      await handleCheckTasks();
+      // Note: checkXPTasks is called via socket listener to avoid duplicates
     } catch (err) {
       console.error('Error during refresh:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh snapshots');
@@ -133,7 +131,7 @@ function XPProgress({ eventId, teams, isEventCreator = false }: XPProgressProps)
       if (data.eventId === eventId) {
         console.log('Received xp-snapshots-refreshed event, refreshing progress...');
         fetchProgress();
-        handleCheckTasks();
+        handleCheckTasks(); // This handles both manual and scheduled refreshes
       }
     };
 
@@ -142,7 +140,7 @@ function XPProgress({ eventId, teams, isEventCreator = false }: XPProgressProps)
     return () => {
       socket.off('xp-snapshots-refreshed', handleRefresh);
     };
-  }, [socket, eventId]);
+  }, [socket, eventId, handleCheckTasks]);
 
   if (loading) {
     return (

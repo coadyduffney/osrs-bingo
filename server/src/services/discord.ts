@@ -117,6 +117,21 @@ export async function notifyTaskCompleted(
     return false;
   }
 
+  const completionMessages = [
+    `just knocked out a task! 🎉`,
+    `just crushed a task! 💪`,
+    `just completed a task! ⭐`,
+    `just checked off a task! ✅`,
+    `just nailed a task! 🎯`,
+    `just ticked off a task! ✔️`,
+    `just smashed a task! 🔥`,
+    `just checked a task off the list! 📋`,
+    `just accomplished a task! 🏆`,
+    `just finished a task! 🎊`,
+  ];
+
+  const randomMessage = completionMessages[Math.floor(Math.random() * completionMessages.length)];
+
   const fields = [
     {
       name: '🎯 Task',
@@ -148,7 +163,7 @@ export async function notifyTaskCompleted(
 
   const embed: DiscordEmbed = {
     title: '✅ Task Completed!',
-    description: `**${teamName}** just knocked out a task! 🎉`,
+    description: `**${teamName}** ${randomMessage}`,
     color: 3066993,
     fields,
     timestamp: new Date().toISOString(),
