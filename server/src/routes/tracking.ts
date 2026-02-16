@@ -699,7 +699,7 @@ router.post('/:eventId/check-xp-tasks', async (req: Request, res: Response, next
             // Send Discord notification for auto-completed XP task
             notifyTaskCompleted(
               teamName,
-              `${updatedTask.title} (XP: ${completed.skill})`,
+              `⚡ ${updatedTask.title} (XP: ${completed.skill})`,
               updatedTask.points
             );
 

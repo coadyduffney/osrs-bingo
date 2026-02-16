@@ -229,7 +229,14 @@ router.post(
 
     // Send Discord notification for task completion
     if (updatedTask) {
-      notifyTaskCompleted(teamName, updatedTask.title, updatedTask.points, memberRSN);
+      notifyTaskCompleted(
+        teamName, 
+        updatedTask.title, 
+        updatedTask.points, 
+        memberRSN,
+        verificationImageUrl,
+        verificationNote
+      );
     }
 
     // Emit Socket.IO event to all clients in the event room

@@ -21,6 +21,8 @@ interface DiscordEmbed {
   description?: string;
   color?: number;
   fields?: { name: string; value: string; inline?: boolean }[];
+  image?: { url: string };
+  thumbnail?: { url: string };
   timestamp?: string;
   footer?: { text: string };
 }
@@ -107,38 +109,64 @@ export async function notifyTaskCompleted(
   teamName: string,
   taskTitle: string,
   taskPoints: number,
-  rsn?: string
+  rsn?: string,
+  verificationImageUrl?: string,
+  verificationNote?: string
 ): Promise<boolean> {
   if (!DISCORD_TASK_WEBHOOK_URL) {
     return false;
   }
 
+  const fields = [
+    {
+      name: '🎯 Task',
+      value: `**${taskTitle}**`,
+      inline: false,
+    },
+    {
+      name: '⭐ Points',
+      value: `**${taskPoints}**`,
+      inline: true,
+    },
+  ];
+
+  if (rsn) {
+    fields.push({
+      name: '👤 Player',
+      value: rsn,
+      inline: true,
+    });
+  }
+
+  if (verificationNote) {
+    fields.push({
+      name: '📝 Note',
+      value: verificationNote,
+      inline: false,
+    });
+  }
+
+  const embed: DiscordEmbed = {
+    title: '✅ Task Completed!',
+    description: `**${teamName}** just knocked out a task! 🎉`,
+    color: 3066993,
+    fields,
+    timestamp: new Date().toISOString(),
+    footer: {
+      text: 'OSRS Bingo',
+    },
+  };
+
+  if (verificationImageUrl) {
+    embed.image = {
+      url: verificationImageUrl,
+    };
+  }
+
   const payload: DiscordMessage = {
     username: 'OSRS Bingo Bot',
     avatar_url: 'https://oldschool.runescape.wiki/images/0/02/Bingo_helmet.png',
-    embeds: [
-      {
-        title: '✅ Task Completed!',
-        description: `**${teamName}** completed a task!`,
-        color: 3066993,
-        fields: [
-          {
-            name: 'Task',
-            value: taskTitle,
-            inline: true,
-          },
-          {
-            name: 'Points',
-            value: `${taskPoints} pts`,
-            inline: true,
-          },
-        ],
-        timestamp: new Date().toISOString(),
-        footer: {
-          text: rsn ? `Player: ${rsn}` : 'OSRS Bingo',
-        },
-      },
-    ],
+    embeds: [embed],
   };
 
   try {
