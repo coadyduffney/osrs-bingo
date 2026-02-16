@@ -4,6 +4,7 @@ import { authMiddleware } from '../middleware/auth.js';
 import { WiseOldManService } from '../services/wiseOldMan.js';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { isEventCreatorOrAdmin } from '../utils/permissions.js';
+import { notifyTaskCompleted } from '../services/discord.js';
 import type { EventDocument } from '../schemas/firestore.js';
 
 const router = Router();
@@ -684,6 +685,24 @@ router.post('/:eventId/check-xp-tasks', async (req: Request, res: Response, next
           const updatedTask = updatedTaskDoc.data();
           
           if (updatedTask) {
+            // Get team name for Discord notification
+            let teamName = 'Unknown Team';
+            try {
+              const teamDoc = await db.collection('teams').doc(completed.teamId).get();
+              if (teamDoc.exists) {
+                teamName = teamDoc.data()?.name || teamName;
+              }
+            } catch (err) {
+              console.error('Error fetching team for Discord notification:', err);
+            }
+
+            // Send Discord notification for auto-completed XP task
+            notifyTaskCompleted(
+              teamName,
+              `${updatedTask.title} (XP: ${completed.skill})`,
+              updatedTask.points
+            );
+
             io.to(`event-${eventId}`).emit('task-completed', {
               task: { id: completed.taskId, ...updatedTask },
               teamId: completed.teamId,

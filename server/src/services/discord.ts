@@ -1,10 +1,12 @@
 import fetch from 'node-fetch';
 
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
+const DISCORD_TASK_WEBHOOK_URL = process.env.DISCORD_TASK_WEBHOOK_URL;
 const DISCORD_NOTIFICATION_USER_IDS = process.env.DISCORD_NOTIFICATION_USER_IDS?.split(',').map(id => id.trim()) || [];
 
 console.log('Discord configuration loaded:');
 console.log('  - Webhook URL configured:', !!DISCORD_WEBHOOK_URL);
+console.log('  - Task Webhook URL configured:', !!DISCORD_TASK_WEBHOOK_URL);
 console.log('  - Notification users:', DISCORD_NOTIFICATION_USER_IDS.length > 0 ? DISCORD_NOTIFICATION_USER_IDS : 'none');
 
 interface DiscordMessage {
@@ -99,4 +101,64 @@ export async function notifyRefreshError(
     message,
     'error'
   );
+}
+
+export async function notifyTaskCompleted(
+  teamName: string,
+  taskTitle: string,
+  taskPoints: number,
+  rsn?: string
+): Promise<boolean> {
+  if (!DISCORD_TASK_WEBHOOK_URL) {
+    return false;
+  }
+
+  const payload: DiscordMessage = {
+    username: 'OSRS Bingo Bot',
+    avatar_url: 'https://oldschool.runescape.wiki/images/0/02/Bingo_helmet.png',
+    embeds: [
+      {
+        title: '✅ Task Completed!',
+        description: `**${teamName}** completed a task!`,
+        color: 3066993,
+        fields: [
+          {
+            name: 'Task',
+            value: taskTitle,
+            inline: true,
+          },
+          {
+            name: 'Points',
+            value: `${taskPoints} pts`,
+            inline: true,
+          },
+        ],
+        timestamp: new Date().toISOString(),
+        footer: {
+          text: rsn ? `Player: ${rsn}` : 'OSRS Bingo',
+        },
+      },
+    ],
+  };
+
+  try {
+    const response = await fetch(DISCORD_TASK_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (response.ok) {
+      console.log(`Discord task notification sent: ${teamName} - ${taskTitle}`);
+      return true;
+    } else {
+      console.error('Failed to send Discord task notification:', response.status, response.statusText);
+      return false;
+    }
+  } catch (error) {
+    console.error('Error sending Discord task notification:', error);
+    return false;
+  }
 }
