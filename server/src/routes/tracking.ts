@@ -3,6 +3,8 @@ import { db } from '../config/firebase.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { WiseOldManService } from '../services/wiseOldMan.js';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
+import { isEventCreatorOrAdmin } from '../utils/permissions.js';
+import type { EventDocument } from '../schemas/firestore.js';
 
 const router = Router();
 const womService = new WiseOldManService();
@@ -29,9 +31,9 @@ router.post('/:eventId/update-players', authMiddleware, async (req: Request, res
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    const eventData = eventDoc.data();
-    if (eventData?.creatorId !== userId) {
-      return res.status(403).json({ error: 'Only event creator can update player data' });
+    const eventData = eventDoc.data() as EventDocument;
+    if (!isEventCreatorOrAdmin(eventData, userId)) {
+      return res.status(403).json({ error: 'Only event creator or admins can update player data' });
     }
 
     console.log(`🔄 Queueing player updates for group ${WOM_GROUP_ID}...`);
@@ -73,9 +75,9 @@ router.post('/:eventId/start', authMiddleware, async (req: Request, res: Respons
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    const eventData = eventDoc.data();
-    if (eventData?.creatorId !== userId) {
-      return res.status(403).json({ error: 'Only event creator can start tracking' });
+    const eventData = eventDoc.data() as EventDocument;
+    if (!isEventCreatorOrAdmin(eventData, userId)) {
+      return res.status(403).json({ error: 'Only event creator or admins can start tracking' });
     }
 
     if (eventData?.trackingEnabled) {
@@ -227,9 +229,9 @@ router.post('/:eventId/end', authMiddleware, async (req: Request, res: Response,
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    const eventData = eventDoc.data();
-    if (eventData?.creatorId !== userId) {
-      return res.status(403).json({ error: 'Only event creator can end tracking' });
+    const eventData = eventDoc.data() as EventDocument;
+    if (!isEventCreatorOrAdmin(eventData, userId)) {
+      return res.status(403).json({ error: 'Only event creator or admins can end tracking' });
     }
 
     if (!eventData?.trackingEnabled) {

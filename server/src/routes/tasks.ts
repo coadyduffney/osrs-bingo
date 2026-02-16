@@ -8,6 +8,7 @@ import {
   TaskCompletionRepository,
   UserRepository,
 } from '../repositories/index.js';
+import { isEventCreatorOrAdmin } from '../utils/permissions.js';
 
 const router = Router();
 const taskRepo = new TaskRepository();
@@ -80,14 +81,14 @@ router.post('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Resp
       throw new ApiErrorClass(400, 'Missing required fields');
     }
 
-    // Check if user is the event creator
+    // Check if user is the event creator or admin
     const event = await eventRepo.findById(eventId);
     if (!event) {
       throw new ApiErrorClass(404, 'Event not found');
     }
 
-    if (event.creatorId !== req.user?.id) {
-      throw new ApiErrorClass(403, 'Only the event creator can add tasks');
+    if (!isEventCreatorOrAdmin(event, req.user?.id || '')) {
+      throw new ApiErrorClass(403, 'Only the event creator or admins can add tasks');
     }
 
     const newTask = await taskRepo.create({
@@ -126,14 +127,14 @@ router.post(
       throw new ApiErrorClass(404, 'Task not found');
     }
 
-    // Check if user is the event creator
+    // Check if user is the event creator or admin
     const event = await eventRepo.findById(task.eventId);
     if (!event) {
       throw new ApiErrorClass(404, 'Event not found');
     }
 
-    if (event.creatorId !== req.user?.id) {
-      throw new ApiErrorClass(403, 'Only the event creator can uncomplete tasks');
+    if (!isEventCreatorOrAdmin(event, req.user?.id || '')) {
+      throw new ApiErrorClass(403, 'Only the event creator or admins can uncomplete tasks');
     }
 
     const { teamId } = req.body;
@@ -229,14 +230,14 @@ router.put('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res: Re
     throw new ApiErrorClass(404, 'Task not found');
   }
 
-  // Check if user is the event creator
+  // Check if user is the event creator or admin
   const event = await eventRepo.findById(task.eventId);
   if (!event) {
     throw new ApiErrorClass(404, 'Event not found');
   }
 
-  if (event.creatorId !== req.user?.id) {
-    throw new ApiErrorClass(403, 'Only the event creator can update tasks');
+  if (!isEventCreatorOrAdmin(event, req.user?.id || '')) {
+    throw new ApiErrorClass(403, 'Only the event creator or admins can update tasks');
   }
 
   const updates = req.body;
@@ -259,14 +260,14 @@ router.delete('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res:
     throw new ApiErrorClass(404, 'Task not found');
   }
 
-  // Check if user is the event creator
+  // Check if user is the event creator or admin
   const event = await eventRepo.findById(task.eventId);
   if (!event) {
     throw new ApiErrorClass(404, 'Event not found');
   }
 
-  if (event.creatorId !== req.user?.id) {
-    throw new ApiErrorClass(403, 'Only the event creator can delete tasks');
+  if (!isEventCreatorOrAdmin(event, req.user?.id || '')) {
+    throw new ApiErrorClass(403, 'Only the event creator or admins can delete tasks');
   }
 
   await taskRepo.delete(req.params.id);

@@ -25,6 +25,7 @@ export interface EventDocument extends FirestoreDocument {
   description: string;
   boardSize: 5 | 7 | 9 | 10;
   creatorId: string; // Reference to User document
+  adminUserIds: string[]; // Array of User IDs with admin privileges
   status: 'draft' | 'active' | 'completed' | 'cancelled';
   startDate?: Timestamp;
   endDate?: Timestamp;

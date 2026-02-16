@@ -133,6 +133,7 @@ export interface Event {
   description: string;
   boardSize: number;
   creatorId: string;
+  adminUserIds: string[];
   status: 'draft' | 'active' | 'completed' | 'cancelled';
   startDate?: string;
   endDate?: string;
@@ -264,6 +265,12 @@ export const eventsApi = {
 
   getNextScheduleTime: (id: string) =>
     apiClient.get<ApiResponse<{ nextRunTime: string | null; cronExpression: string | null }>>(`/api/events/${id}/schedule/next`),
+
+  addAdmin: (eventId: string, userId: string) =>
+    apiClient.post<ApiResponse<Event>>(`/api/events/${eventId}/admins`, { userId }),
+
+  removeAdmin: (eventId: string, userId: string) =>
+    apiClient.delete<ApiResponse<Event>>(`/api/events/${eventId}/admins/${userId}`),
 };
 
 // Teams API

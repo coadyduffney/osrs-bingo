@@ -83,6 +83,10 @@ function EventView() {
   const [showWelcomeAlert, setShowWelcomeAlert] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showManageAdminsModal, setShowManageAdminsModal] = useState(false);
+  const [adminSearchQuery, setAdminSearchQuery] = useState('');
+  const [addingAdmin, setAddingAdmin] = useState(false);
+  const [removingAdminId, setRemovingAdminId] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [showCompleteTaskModal, setShowCompleteTaskModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -401,11 +405,28 @@ function EventView() {
     };
     socket.on('xp-snapshots-refreshed', handleXpSnapshotsRefreshed);
 
+    const handleAdminAdded = (data: { eventId: string; userId: string; event: Event }) => {
+      if (data.eventId === id) {
+        setEvent(data.event);
+      }
+    };
+
+    const handleAdminRemoved = (data: { eventId: string; userId: string; event: Event }) => {
+      if (data.eventId === id) {
+        setEvent(data.event);
+      }
+    };
+
+    socket.on('admin-added', handleAdminAdded);
+    socket.on('admin-removed', handleAdminRemoved);
+
     // Cleanup
     return () => {
       socket.off('task-completed', handleTaskCompleted);
       socket.off('task-uncompleted', handleTaskUncompleted);
       socket.off('xp-snapshots-refreshed', handleXpSnapshotsRefreshed);
+      socket.off('admin-added', handleAdminAdded);
+      socket.off('admin-removed', handleAdminRemoved);
       leaveEvent(id);
     };
   }, [id, socket, joinEvent, leaveEvent, teams]);
@@ -559,6 +580,41 @@ function EventView() {
     }
   };
 
+  const handleAddAdmin = async (userId: string) => {
+    if (!id || !event) return;
+
+    try {
+      setAddingAdmin(true);
+      const response = await eventsApi.addAdmin(id, userId);
+      if (response.success) {
+        setEvent(response.data);
+        setAdminSearchQuery('');
+        setError('');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add admin');
+    } finally {
+      setAddingAdmin(false);
+    }
+  };
+
+  const handleRemoveAdmin = async (userId: string) => {
+    if (!id || !event) return;
+
+    try {
+      setRemovingAdminId(userId);
+      const response = await eventsApi.removeAdmin(id, userId);
+      if (response.success) {
+        setEvent(response.data);
+        setError('');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to remove admin');
+    } finally {
+      setRemovingAdminId(null);
+    }
+  };
+
   const handlePublishEvent = async () => {
     if (!id || !event) return;
 
@@ -645,6 +701,8 @@ function EventView() {
   };
 
   const isEventCreator = user?.id === event?.creatorId;
+  const isEventAdmin = (user?.id && event?.adminUserIds?.includes(user.id)) || false;
+  const isEventCreatorOrAdmin = isEventCreator || isEventAdmin;
 
   const handleSaveSchedule = async () => {
     if (!id || !event) return;
@@ -985,7 +1043,7 @@ function EventView() {
                   }
                 </Chip>
               )}
-              {isEventCreator && (
+              {isEventCreatorOrAdmin && (
                 <Stack direction="row" spacing={1}>
                   {event.status === 'draft' && (
                     <Button
@@ -1040,6 +1098,16 @@ function EventView() {
                       ⏰ Schedule On
                     </Button>
                   )}
+                  {isEventCreator && (
+                    <Button
+                      color="neutral"
+                      variant="outlined"
+                      size="sm"
+                      onClick={() => setShowManageAdminsModal(true)}
+                    >
+                      Manage Admins
+                    </Button>
+                  )}
                   <Button
                     color="danger"
                     variant="outlined"
@@ -1066,7 +1134,7 @@ function EventView() {
           </Stack>
 
           {/* Draft Event Notice */}
-          {isEventCreator && event.status === 'draft' && (
+          {isEventCreatorOrAdmin && event.status === 'draft' && (
             <Alert variant="soft" color="warning" sx={{ mt: 2 }}>
               <Stack spacing={0.5}>
                 <Typography level="title-sm">📝 Draft Event</Typography>
@@ -1105,7 +1173,7 @@ function EventView() {
                 <Typography level="h3">
                   Bingo Board ({event.boardSize}x{event.boardSize})
                 </Typography>
-                {isEventCreator && (
+                {isEventCreatorOrAdmin && (
                   <Alert variant="soft" color="primary" size="sm">
                     Click on any cell to add or edit a task
                   </Alert>
@@ -1131,7 +1199,7 @@ function EventView() {
                 <TeamManagement
                   eventId={id!}
                   eventStatus={event.status}
-                  isEventCreator={isEventCreator}
+                  isEventCreator={isEventCreatorOrAdmin}
                   teams={teams}
                   onTeamCreated={handleTeamCreated}
                   onTeamJoined={handleTeamJoined}
@@ -1262,7 +1330,7 @@ function EventView() {
         <TabPanel value={3} sx={{ p: 0, pt: 2 }}>
           <Card>
             <CardContent>
-              <XPProgress eventId={event.id} teams={teams} isEventCreator={isEventCreator} />
+              <XPProgress eventId={event.id} teams={teams} isEventCreator={isEventCreatorOrAdmin} />
             </CardContent>
           </Card>
         </TabPanel>
@@ -1435,6 +1503,174 @@ function EventView() {
         </ModalDialog>
       </Modal>
 
+      {/* Manage Admins Modal */}
+      <Modal
+        open={showManageAdminsModal}
+        onClose={() => {
+          setShowManageAdminsModal(false);
+          setAdminSearchQuery('');
+        }}
+      >
+        <ModalDialog sx={{ minWidth: 500, maxWidth: 600 }}>
+          <ModalClose />
+          <Typography level="h4" sx={{ mb: 2 }}>
+            Manage Event Admins
+          </Typography>
+          
+          <Typography level="body-sm" sx={{ mb: 2, color: 'text.secondary' }}>
+            Event admins can manage tasks, tracking, and teams, but cannot delete the event or manage other admins.
+          </Typography>
+
+          {/* Current Admins List */}
+          {event && event.adminUserIds && event.adminUserIds.length > 0 && (
+            <Box sx={{ mb: 3 }}>
+              <Typography level="title-sm" sx={{ mb: 1 }}>
+                Current Admins
+              </Typography>
+              <Stack spacing={1}>
+                {event.adminUserIds.map((adminId) => {
+                  // Find user info from teamMembers Map
+                  const allMembers = Array.from(teamMembers.values()).flat();
+                  const adminUser = allMembers.find((u) => u.id === adminId);
+                  
+                  return (
+                    <Box
+                      key={adminId}
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        p: 1.5,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 'sm',
+                      }}
+                    >
+                      <Stack>
+                        <Typography level="body-md">
+                          {adminUser?.username || 'Unknown User'}
+                        </Typography>
+                        {adminUser?.rsn && (
+                          <Typography level="body-sm" sx={{ color: 'text.secondary' }}>
+                            RSN: {adminUser.rsn}
+                          </Typography>
+                        )}
+                      </Stack>
+                      <Button
+                        size="sm"
+                        variant="outlined"
+                        color="danger"
+                        onClick={() => handleRemoveAdmin(adminId)}
+                        loading={removingAdminId === adminId}
+                      >
+                        Remove
+                      </Button>
+                    </Box>
+                  );
+                })}
+              </Stack>
+            </Box>
+          )}
+
+          {/* Add New Admin */}
+          <Box>
+            <Typography level="title-sm" sx={{ mb: 1 }}>
+              Add New Admin
+            </Typography>
+            <Typography level="body-sm" sx={{ mb: 2, color: 'text.secondary' }}>
+              Select a team member to grant admin privileges
+            </Typography>
+            
+            {/* Get all team members who aren't already admins or the creator */}
+            {(() => {
+              const allMembers = Array.from(teamMembers.values()).flat();
+              const eligibleMembers = allMembers.filter(
+                (u) =>
+                  u.id !== event?.creatorId &&
+                  !event?.adminUserIds?.includes(u.id)
+              );
+              
+              // Remove duplicates by id
+              const uniqueMembers = eligibleMembers.filter(
+                (member, index, self) =>
+                  index === self.findIndex((m) => m.id === member.id)
+              );
+
+              if (uniqueMembers.length === 0) {
+                return (
+                  <Alert variant="soft" color="neutral">
+                    No eligible team members to add as admins. Users must join a team first.
+                  </Alert>
+                );
+              }
+
+              const filteredMembers = adminSearchQuery
+                ? uniqueMembers.filter(
+                    (m) =>
+                      m.username.toLowerCase().includes(adminSearchQuery.toLowerCase()) ||
+                      m.rsn?.toLowerCase().includes(adminSearchQuery.toLowerCase())
+                  )
+                : uniqueMembers;
+
+              return (
+                <>
+                  <Input
+                    placeholder="Search by username or RSN..."
+                    value={adminSearchQuery}
+                    onChange={(e) => setAdminSearchQuery(e.target.value)}
+                    sx={{ mb: 2 }}
+                  />
+                  
+                  <Stack spacing={1} sx={{ maxHeight: 300, overflow: 'auto' }}>
+                    {filteredMembers.length === 0 ? (
+                      <Typography level="body-sm" sx={{ color: 'text.secondary', textAlign: 'center', py: 2 }}>
+                        No members found matching "{adminSearchQuery}"
+                      </Typography>
+                    ) : (
+                      filteredMembers.map((member) => (
+                        <Box
+                          key={member.id}
+                          sx={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            p: 1.5,
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            borderRadius: 'sm',
+                            '&:hover': {
+                              bgcolor: 'background.level1',
+                            },
+                          }}
+                        >
+                          <Stack>
+                            <Typography level="body-md">{member.username}</Typography>
+                            {member.rsn && (
+                              <Typography level="body-sm" sx={{ color: 'text.secondary' }}>
+                                RSN: {member.rsn}
+                              </Typography>
+                            )}
+                          </Stack>
+                          <Button
+                            size="sm"
+                            variant="solid"
+                            color="primary"
+                            onClick={() => handleAddAdmin(member.id)}
+                            loading={addingAdmin}
+                          >
+                            Add Admin
+                          </Button>
+                        </Box>
+                      ))
+                    )}
+                  </Stack>
+                </>
+              );
+            })()}
+          </Box>
+        </ModalDialog>
+      </Modal>
+
       {/* Schedule Configuration Modal */}
       <Modal
         open={showScheduleModal}
@@ -1600,7 +1836,7 @@ function EventView() {
                     <Typography level="title-lg">
                       {selectedTask.title}
                     </Typography>
-                    {isEventCreator && (
+                    {isEventCreatorOrAdmin && (
                       <Stack direction="row" spacing={1}>
                         <Button
                           size="sm"
@@ -1682,7 +1918,7 @@ function EventView() {
                 </Stack>
 
                 {/* Show completed teams list for event creator */}
-                {isEventCreator && selectedTask.completedByTeamIds.length > 0 && (
+                {isEventCreatorOrAdmin && selectedTask.completedByTeamIds.length > 0 && (
                   <Box>
                     <Typography level="title-sm" sx={{ mb: 1 }}>
                       Completed Teams

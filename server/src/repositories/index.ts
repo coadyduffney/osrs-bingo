@@ -126,6 +126,7 @@ export class EventRepository {
     const eventData: EventDocument = {
       id: docRef.id,
       ...data,
+      adminUserIds: [],
       teamIds: [],
       taskIds: [],
       joinCode: generateJoinCode(),
@@ -142,7 +143,11 @@ export class EventRepository {
     if (!doc.exists) return null;
     
     const data = doc.data() as EventDocument;
-    return serializeDocument({ ...data, id: doc.id });
+    return serializeDocument({ 
+      ...data, 
+      id: doc.id,
+      adminUserIds: data.adminUserIds || [] // Default to empty array for existing events
+    });
   }
 
   async findAll(limit = 50): Promise<EventDocument[]> {
@@ -150,7 +155,10 @@ export class EventRepository {
       .orderBy('createdAt', 'desc')
       .limit(limit)
       .get();
-    return snapshot.docs.map((doc) => serializeDocument({ ...doc.data() as EventDocument, id: doc.id }));
+    return snapshot.docs.map((doc) => {
+      const data = doc.data() as EventDocument;
+      return serializeDocument({ ...data, id: doc.id, adminUserIds: data.adminUserIds || [] });
+    });
   }
 
   async findByCreator(creatorId: string): Promise<EventDocument[]> {
@@ -158,7 +166,10 @@ export class EventRepository {
       .where('creatorId', '==', creatorId)
       .orderBy('createdAt', 'desc')
       .get();
-    return snapshot.docs.map((doc) => serializeDocument({ ...doc.data() as EventDocument, id: doc.id }));
+    return snapshot.docs.map((doc) => {
+      const data = doc.data() as EventDocument;
+      return serializeDocument({ ...data, id: doc.id, adminUserIds: data.adminUserIds || [] });
+    });
   }
 
   async findByStatus(
@@ -168,7 +179,10 @@ export class EventRepository {
       .where('status', '==', status)
       .orderBy('createdAt', 'desc')
       .get();
-    return snapshot.docs.map((doc) => serializeDocument({ ...doc.data() as EventDocument, id: doc.id }));
+    return snapshot.docs.map((doc) => {
+      const data = doc.data() as EventDocument;
+      return serializeDocument({ ...data, id: doc.id, adminUserIds: data.adminUserIds || [] });
+    });
   }
 
   async update(id: string, data: Partial<EventDocument>): Promise<void> {
@@ -188,6 +202,20 @@ export class EventRepository {
   async addTask(eventId: string, taskId: string): Promise<void> {
     await this.collection.doc(eventId).update({
       taskIds: FieldValue.arrayUnion(taskId),
+      updatedAt: Timestamp.now(),
+    });
+  }
+
+  async addAdmin(eventId: string, userId: string): Promise<void> {
+    await this.collection.doc(eventId).update({
+      adminUserIds: FieldValue.arrayUnion(userId),
+      updatedAt: Timestamp.now(),
+    });
+  }
+
+  async removeAdmin(eventId: string, userId: string): Promise<void> {
+    await this.collection.doc(eventId).update({
+      adminUserIds: FieldValue.arrayRemove(userId),
       updatedAt: Timestamp.now(),
     });
   }

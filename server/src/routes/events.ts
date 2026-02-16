@@ -5,6 +5,7 @@ import { ApiErrorClass, asyncHandler } from '../middleware/errorHandler.js';
 import { EventRepository } from '../repositories/index.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { getNextRunTime, reloadScheduledJobs } from '../services/scheduler.js';
+import { isEventCreatorOrAdmin } from '../utils/permissions.js';
 
 const router = Router();
 const eventRepo = new EventRepository();
@@ -122,9 +123,9 @@ router.put('/:id', authMiddleware, asyncHandler(async (req: Request, res: Respon
 
   const currentUserId = (req as any).user.id;
 
-  // Only creator can update event
-  if (event.creatorId !== currentUserId) {
-    throw new ApiErrorClass(403, 'Only the event creator can update this event');
+  // Only creator or admin can update event
+  if (!isEventCreatorOrAdmin(event, currentUserId)) {
+    throw new ApiErrorClass(403, 'Only the event creator or admins can update this event');
   }
 
   const updates = req.body;
@@ -195,9 +196,9 @@ router.post('/:id/publish', authMiddleware, asyncHandler(async (req: Request, re
 
   const currentUserId = (req as any).user.id;
 
-  // Only creator can publish event
-  if (event.creatorId !== currentUserId) {
-    throw new ApiErrorClass(403, 'Only the event creator can publish this event');
+  // Only creator or admin can publish event
+  if (!isEventCreatorOrAdmin(event, currentUserId)) {
+    throw new ApiErrorClass(403, 'Only the event creator or admins can publish this event');
   }
 
   // Can only publish draft events
@@ -236,8 +237,8 @@ router.post('/:id/schedule', authMiddleware, asyncHandler(async (req: Request, r
 
   const currentUserId = (req as any).user.id;
 
-  if (event.creatorId !== currentUserId) {
-    throw new ApiErrorClass(403, 'Only the event creator can set the schedule');
+  if (!isEventCreatorOrAdmin(event, currentUserId)) {
+    throw new ApiErrorClass(403, 'Only the event creator or admins can set the schedule');
   }
 
   await eventRepo.update(req.params.id, { 
@@ -254,6 +255,99 @@ router.post('/:id/schedule', authMiddleware, asyncHandler(async (req: Request, r
   res.json({
     success: true,
     data: updatedEvent
+  });
+}));
+
+// Add event admin (event creator only)
+router.post('/:id/admins', authMiddleware, asyncHandler(async (req: Request, res: Response) => {
+  const { userId } = req.body;
+
+  if (!userId) {
+    throw new ApiErrorClass(400, 'userId is required');
+  }
+
+  const event = await eventRepo.findById(req.params.id);
+  
+  if (!event) {
+    throw new ApiErrorClass(404, 'Event not found');
+  }
+
+  const currentUserId = (req as any).user.id;
+
+  // Only event creator can add admins
+  if (event.creatorId !== currentUserId) {
+    throw new ApiErrorClass(403, 'Only the event creator can add admins');
+  }
+
+  // Cannot add creator as admin (they already have full access)
+  if (userId === event.creatorId) {
+    throw new ApiErrorClass(400, 'Event creator already has full access');
+  }
+
+  // Check if already admin
+  if (event.adminUserIds?.includes(userId)) {
+    throw new ApiErrorClass(400, 'User is already an admin');
+  }
+
+  await eventRepo.addAdmin(req.params.id, userId);
+  const updatedEvent = await eventRepo.findById(req.params.id);
+
+  // Emit socket event to all clients in the event room
+  const io = (req.app as any).get('io');
+  if (io && updatedEvent) {
+    io.to(`event-${req.params.id}`).emit('admin-added', {
+      eventId: req.params.id,
+      userId,
+      event: updatedEvent,
+    });
+  }
+
+  res.json({
+    success: true,
+    data: updatedEvent,
+    message: 'Admin added successfully'
+  });
+}));
+
+// Remove event admin (event creator only)
+router.delete('/:id/admins/:userId', authMiddleware, asyncHandler(async (req: Request, res: Response) => {
+  const { userId } = req.params;
+
+  const event = await eventRepo.findById(req.params.id);
+  
+  if (!event) {
+    throw new ApiErrorClass(404, 'Event not found');
+  }
+
+  const currentUserId = (req as any).user.id;
+
+  // Only event creator can remove admins
+  if (event.creatorId !== currentUserId) {
+    throw new ApiErrorClass(403, 'Only the event creator can remove admins');
+  }
+
+  // Check if user is actually an admin
+  if (!event.adminUserIds?.includes(userId)) {
+    throw new ApiErrorClass(400, 'User is not an admin');
+  }
+
+  await eventRepo.removeAdmin(req.params.id, userId);
+  const updatedEvent = await eventRepo.findById(req.params.id);
+
+  // Emit socket event to all clients in the event room
+  const io = (req.app as any).get('io');
+  if (io && updatedEvent) {
+    io.to(`event-${req.params.id}`).emit('admin-removed', {
+      eventId: req.params.id,
+      userId,
+      event: updatedEvent,
+    });
+  }
+
+  res.json({
+    success: true,
+    data: updatedEvent,
+    message: 'Admin removed successfully'
   });
 }));
 
