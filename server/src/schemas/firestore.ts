@@ -114,7 +114,7 @@ export type CreateUserInput = Omit<
 >;
 export type CreateEventInput = Omit<
   EventDocument,
-  keyof FirestoreDocument | 'teamIds' | 'taskIds' | 'joinCode'
+  keyof FirestoreDocument | 'adminUserIds' | 'teamIds' | 'taskIds' | 'joinCode'
 >;
 export type CreateTeamInput = Omit<
   TeamDocument,
