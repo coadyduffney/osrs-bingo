@@ -254,10 +254,6 @@ export class WiseOldManService {
       return true;
     } catch (error: any) {
       const errorMsg = error.response?.data || error.message;
-      if (errorMsg?.message === 'All players given are already members.') {
-        console.log(`ℹ️ Players already members of group ${groupId}, skipping`);
-        return true;
-      }
       console.error(`❌ Failed to add members to group ${groupId}:`, errorMsg);
       return false;
     }
