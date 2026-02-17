@@ -105,6 +105,25 @@ export async function notifyRefreshError(
   );
 }
 
+export async function notifyRefreshRetry(
+  eventId: string,
+  initialFailedPlayers: string[],
+  retryResults: { success: string[]; failed: string[] }
+): Promise<boolean> {
+  const allSucceeded = retryResults.failed.length === 0;
+  const title = allSucceeded ? '✅ XP Auto-Refresh Retry Succeeded' : '⚠️ XP Auto-Refresh Retry Partial Failure';
+  
+  const message = [
+    `**Event ID:** ${eventId}`,
+    `**Initially Failed Players:** ${initialFailedPlayers.join(', ')}`,
+    `**After Retry:**`,
+    retryResults.success.length > 0 ? `  ✅ Successfully updated: ${retryResults.success.join(', ')}` : '',
+    retryResults.failed.length > 0 ? `  ❌ Still failing: ${retryResults.failed.join(', ')}` : '',
+  ].filter(Boolean).join('\n');
+
+  return sendDiscordNotification(title, message, allSucceeded ? 'success' : 'warning');
+}
+
 export async function notifyTaskCompleted(
   teamName: string,
   taskTitle: string,
