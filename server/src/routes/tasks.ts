@@ -9,6 +9,8 @@ import {
   UserRepository,
 } from '../repositories/index.js';
 import { isEventCreatorOrAdmin } from '../utils/permissions.js';
+import { notifyTaskCompleted } from '../services/discord.js';
+import { db } from '../config/firebase.js';
 
 const router = Router();
 const taskRepo = new TaskRepository();
@@ -202,6 +204,40 @@ router.post(
 
     // Fetch updated task
     const updatedTask = await taskRepo.findById(req.params.id);
+
+    // Get team name and member RSN for Discord notification
+    let teamName = 'Unknown Team';
+    let memberRSN: string | undefined;
+    
+    try {
+      const teamDoc = await db.collection('teams').doc(teamId).get();
+      if (teamDoc.exists) {
+        teamName = teamDoc.data()?.name || teamName;
+        
+        // Get the member who completed the task to find their RSN
+        const memberId = req.user?.id;
+        if (memberId) {
+          const memberDoc = await db.collection('users').doc(memberId).get();
+          if (memberDoc.exists) {
+            memberRSN = memberDoc.data()?.rsn;
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching team for Discord notification:', err);
+    }
+
+    // Send Discord notification for task completion
+    if (updatedTask) {
+      notifyTaskCompleted(
+        teamName, 
+        updatedTask.title, 
+        updatedTask.points, 
+        memberRSN,
+        verificationImageUrl,
+        verificationNote
+      );
+    }
 
     // Emit Socket.IO event to all clients in the event room
     const io = (req.app as any).get('io');

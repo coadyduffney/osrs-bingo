@@ -253,8 +253,14 @@ export class WiseOldManService {
       console.log(`✅ Successfully added members to group`);
       return true;
     } catch (error: any) {
-      const errorMsg = error.response?.data || error.message;
-      console.error(`❌ Failed to add members to group ${groupId}:`, errorMsg);
+      const errorData = error.response?.data;
+      const errorMsg = errorData || error.message;
+      console.error(`❌ Failed to add members to group ${groupId}:`, JSON.stringify({
+        error: errorMsg,
+        membersAttempted: members.map(m => m.username),
+        statusCode: error.response?.status,
+        groupId
+      }, null, 2));
       return false;
     }
   }

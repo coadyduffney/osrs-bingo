@@ -4,7 +4,7 @@ import { db } from '../config/firebase.js';
 import { WiseOldManService } from './wiseOldMan.js';
 import { Timestamp } from 'firebase-admin/firestore';
 import { Server as SocketIOServer } from 'socket.io';
-import { notifyRefreshError } from './discord.js';
+import { notifyRefreshError, notifyRefreshRetry } from './discord.js';
 
 const womService = new WiseOldManService();
 const DELAY_MS = 5500; // Delay between each player's update
@@ -230,6 +230,21 @@ export async function refreshEventSnapshots(eventId: string): Promise<{ success:
     if (failedPlayers.length > 0) {
       console.warn(`⚠️ Failed to update ${failedPlayers.length} players (${failedPlayers.join(', ')}), keeping their old snapshots`);
       notifyRefreshError(eventId, `Failed to update ${failedPlayers.length} player(s)`, failedPlayers);
+      
+      console.log(`⏳ Waiting 30s before retrying failed players...`);
+      await new Promise((resolve) => setTimeout(resolve, 30000));
+      
+      console.log(`🔄 Retrying failed players: ${failedPlayers.join(', ')}`);
+      const retryResults = await retryFailedPlayers(eventId, failedPlayers, baselineSnapshots);
+      
+      notifyRefreshRetry(eventId, failedPlayers, retryResults);
+      
+      if (retryResults.success.length > 0) {
+        console.log(`✅ Retry succeeded for: ${retryResults.success.join(', ')}`);
+      }
+      if (retryResults.failed.length > 0) {
+        console.warn(`❌ Retry still failed for: ${retryResults.failed.join(', ')}`);
+      }
     } else if (processedRSNs.size > 0) {
       console.log(`✅ Scheduled XP refresh completed for event ${eventId}, ${processedRSNs.size} players updated`);
     }
@@ -271,4 +286,66 @@ export function getNextRunTime(cronExpression: string): Date | null {
     console.error('Error parsing cron expression:', error);
     return null;
   }
+}
+
+async function retryFailedPlayers(
+  eventId: string,
+  failedPlayers: string[],
+  baselineSnapshots: FirebaseFirestore.QuerySnapshot<FirebaseFirestore.DocumentData>
+): Promise<{ success: string[]; failed: string[] }> {
+  const success: string[] = [];
+  const stillFailed: string[] = [];
+  const batch = db.batch();
+  const now = Timestamp.now();
+
+  for (const username of failedPlayers) {
+    try {
+      console.log(`  🔄 Retrying update for ${username}...`);
+      const snapshot = await womService.updatePlayerAndGetSnapshot(username);
+
+      if (snapshot) {
+        success.push(username);
+        
+        const baselineDoc = baselineSnapshots.docs.find(
+          (doc) => doc.data().rsn === username
+        );
+        
+        if (baselineDoc) {
+          const baselineData = baselineDoc.data();
+          const snapshotData = {
+            eventId,
+            teamId: baselineData.teamId,
+            userId: baselineData.userId,
+            rsn: username,
+            snapshotType: 'current',
+            capturedAt: now,
+            skills: snapshot.skills,
+            createdAt: now,
+            updatedAt: now,
+          };
+
+          const snapshotRef = db.collection('playerSnapshots').doc();
+          batch.set(snapshotRef, snapshotData);
+        }
+        console.log(`  ✅ Retry succeeded for ${username}`);
+      } else {
+        stillFailed.push(username);
+        console.error(`  ❌ Retry failed for ${username}`);
+      }
+    } catch (error: any) {
+      stillFailed.push(username);
+      console.error(`  ❌ Retry error for ${username}:`, error.message);
+    }
+
+    // Wait between each retry to avoid rate limiting
+    if (failedPlayers.indexOf(username) < failedPlayers.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
+    }
+  }
+
+  if (success.length > 0) {
+    await batch.commit();
+  }
+
+  return { success, failed: stillFailed };
 }
