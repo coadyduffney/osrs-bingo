@@ -184,8 +184,6 @@ router.post('/:eventId/start', authMiddleware, async (req: Request, res: Respons
       }
     }
 
-    await batch.commit();
-
     // Update event to enable tracking
     batch.set(eventRef, {
       trackingEnabled: true,
