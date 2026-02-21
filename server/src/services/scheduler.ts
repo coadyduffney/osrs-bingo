@@ -5,6 +5,7 @@ import { WiseOldManService } from './wiseOldMan.js';
 import { Timestamp } from 'firebase-admin/firestore';
 import { Server as SocketIOServer } from 'socket.io';
 import { notifyRefreshError, notifyRefreshRetry } from './discord.js';
+import { invalidateProgressCache } from '../routes/tracking.js';
 
 const womService = new WiseOldManService();
 const DELAY_MS = 5500; // Delay between each player's update
@@ -28,8 +29,8 @@ export function startScheduler() {
   console.log('⏰ XP Refresh Scheduler started');
   loadScheduledJobs();
   
-  // Re-check every minute for new/changed schedules
-  setInterval(loadScheduledJobs, 60000);
+  // Re-check every 5 minutes for new/changed schedules
+  setInterval(loadScheduledJobs, 300000);
 }
 
 async function loadScheduledJobs() {
@@ -284,6 +285,9 @@ export async function refreshEventSnapshots(eventId: string): Promise<{ success:
         timestamp: new Date().toISOString(),
       });
     }
+
+    // Invalidate progress cache so next request fetches fresh data
+    invalidateProgressCache(eventId);
 
     return { success: true, playersUpdated: processedRSNs.size };
   } catch (error: any) {

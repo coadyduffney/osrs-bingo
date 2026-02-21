@@ -14,6 +14,26 @@ const DELAY_MS = 5500;
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 10000;
 
+// Simple in-memory cache for XP progress to reduce Firestore reads
+const progressCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL_MS = 30000; // 30 seconds cache
+
+function getCachedProgress(eventId: string): any | null {
+  const cached = progressCache.get(eventId);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
+  }
+  return null;
+}
+
+function setCachedProgress(eventId: string, data: any): void {
+  progressCache.set(eventId, { data, timestamp: Date.now() });
+}
+
+export function invalidateProgressCache(eventId: string): void {
+  progressCache.delete(eventId);
+}
+
 // Use existing WiseOldMan group for all events (Bibzys Bingo)
 const WOM_GROUP_ID = parseInt(process.env.WOM_GROUP_ID || '22343');
 const WOM_VERIFICATION_CODE = process.env.WOM_VERIFICATION_CODE || '';
@@ -495,6 +515,9 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
       });
     }
 
+    // Invalidate progress cache so next request fetches fresh data
+    invalidateProgressCache(eventId);
+
     return res.json({
       success: true,
       data: {
@@ -511,6 +534,12 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
 router.get('/:eventId/progress', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { eventId } = req.params;
+
+    // Check cache first
+    const cached = getCachedProgress(eventId);
+    if (cached) {
+      return res.json(cached);
+    }
 
     // Get all baseline and current snapshots
     const snapshotsSnapshot = await db
@@ -577,13 +606,18 @@ router.get('/:eventId/progress', async (req: Request, res: Response, next: NextF
       teamGains.get(teamId).members.push(memberGains);
     });
 
-    return res.json({
+    const response = {
       success: true,
       data: {
         eventId,
         teams: Array.from(teamGains.values()),
       },
-    });
+    };
+
+    // Cache the response
+    setCachedProgress(eventId, response);
+
+    return res.json(response);
   } catch (error) {
     return next(error);
   }
