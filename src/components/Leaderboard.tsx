@@ -52,19 +52,23 @@ const Leaderboard = memo(function Leaderboard({ teams, members }: LeaderboardPro
     const fetchCompletions = async () => {
       try {
         setLoading(true);
-        // Get all teams' tasks
+        // Get all unique task IDs across all teams
+        const uniqueTaskIds = new Set<string>();
+        teams.forEach(team => {
+          team.completedTaskIds.forEach(taskId => uniqueTaskIds.add(taskId));
+        });
+        
         const allCompletions: TaskCompletion[] = [];
         
-        for (const team of teams) {
-          for (const taskId of team.completedTaskIds) {
-            const response = await tasksApi.getCompletions(taskId);
-            if (response.success) {
-              allCompletions.push(...response.data.map((c: any) => ({
-                taskId,
-                completedBy: c.completedBy,
-                points: c.points,
-              })));
-            }
+        // Fetch completions for each unique task only once
+        for (const taskId of uniqueTaskIds) {
+          const response = await tasksApi.getCompletions(taskId);
+          if (response.success) {
+            allCompletions.push(...response.data.map((c: any) => ({
+              taskId,
+              completedBy: c.completedBy,
+              points: c.points,
+            })));
           }
         }
         
