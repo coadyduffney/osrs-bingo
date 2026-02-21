@@ -363,10 +363,34 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
       .where('snapshotType', '==', 'current')
       .get();
 
-    // Update players individually with delays - deduplicate RSNs first
-    const allUsernames = baselineSnapshots.docs.map((doc) => doc.data().rsn);
-    const usernames = [...new Set(allUsernames)]; // Remove duplicates
-    console.log(`🔄 Refreshing ${usernames.length} unique players (from ${allUsernames.length} snapshots) individually...`);
+    // Get all unique userIds from baselines
+    const baselineData = baselineSnapshots.docs.map(doc => doc.data());
+    const uniqueUserIds = [...new Set(baselineData.map(b => b.userId))];
+
+    // Fetch current RSNs from users collection (in case players changed their RSN)
+    const userDocs = await db.collection('users').where('id', 'in', uniqueUserIds).get();
+    const userIdToRSN = new Map<string, string>();
+    userDocs.forEach(doc => {
+      const userData = doc.data();
+      if (userData.rsn) {
+        userIdToRSN.set(doc.id, userData.rsn);
+      }
+    });
+
+    // Build map of old RSN -> new RSN for players who changed their name
+    const rsnRemap = new Map<string, string>();
+    baselineData.forEach(baseline => {
+      const currentRSN = userIdToRSN.get(baseline.userId);
+      if (currentRSN && currentRSN !== baseline.rsn) {
+        console.log(`  📝 Player ${baseline.rsn} changed RSN to ${currentRSN}`);
+        rsnRemap.set(baseline.rsn, currentRSN);
+      }
+    });
+
+    // Get usernames - use remapped RSNs if available
+    const usernames = baselineData.map(b => rsnRemap.get(b.rsn) || b.rsn);
+    const uniqueUsernames = [...new Set(usernames)];
+    console.log(`🔄 Refreshing ${uniqueUsernames.length} unique players (from ${baselineData.length} snapshots) individually...`);
     
     const newSnapshotsBatch = db.batch();
     const now = Timestamp.now();
@@ -378,7 +402,11 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
       const snapshot = await womService.updatePlayerAndGetSnapshot(username);
 
       if (snapshot) {
-        const baselineDoc = baselineSnapshots.docs.find(doc => doc.data().rsn === username);
+        // Find baseline by matching either the new RSN or the old RSN
+        const baselineDoc = baselineSnapshots.docs.find(doc => {
+          const data = doc.data();
+          return data.rsn === username || rsnRemap.get(data.rsn) === username;
+        });
         if (baselineDoc) {
           const data = baselineDoc.data();
           const snapshotData = {
@@ -401,8 +429,8 @@ router.post('/:eventId/refresh', authMiddleware, async (req: Request, res: Respo
       return !!snapshot;
     };
 
-    for (let i = 0; i < usernames.length; i++) {
-      const username = usernames[i];
+    for (let i = 0; i < uniqueUsernames.length; i++) {
+      const username = uniqueUsernames[i];
       let success = false;
       let lastError: string = '';
 
