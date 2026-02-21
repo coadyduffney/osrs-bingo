@@ -10,13 +10,13 @@ interface Args {
 }
 
 function parseArgs(): Args {
-  const args = process.argv.slice(2);
-  const eventId = args.find(arg => !arg.startsWith('--')) || '';
+  const args = process.argv.slice(2).filter(arg => arg !== '--');
   const username = args.find(arg => arg.startsWith('--username='))?.replace('--username=', '') || '';
+  const eventId = args.find(arg => !arg.startsWith('--')) || '';
 
   if (!eventId || !username) {
-    console.error('Usage: npm run update-player <eventId> --username=<rsn>');
-    console.error('Example: npm run update-player event123 --username=dumbironcuck');
+    console.error('Usage: npm run update-player -- <eventId> --username=<rsn>');
+    console.error('Example: npm run update-player -- event123 --username=dumbironcuck');
     process.exit(1);
   }
 
