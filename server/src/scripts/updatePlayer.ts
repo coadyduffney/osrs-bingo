@@ -1,19 +1,7 @@
-import admin from 'firebase-admin';
-import dotenv from 'dotenv';
+import { db } from '../config/firebase.js';
 import { WiseOldManService } from '../services/wiseOldMan.js';
 import { Timestamp } from 'firebase-admin/firestore';
 
-dotenv.config();
-
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
-
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-}
-
-const db = admin.firestore();
 const womService = new WiseOldManService();
 
 interface Args {
