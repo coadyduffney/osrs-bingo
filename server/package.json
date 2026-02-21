@@ -10,7 +10,8 @@
     "start": "node dist/index.js",
     "lint": "eslint src --ext ts",
     "seed": "tsx src/scripts/seedData.ts",
-    "create-baseline": "tsx src/scripts/createBaselineSnapshot.ts"
+    "create-baseline": "tsx src/scripts/createBaselineSnapshot.ts",
+    "update-player": "tsx src/scripts/updatePlayer.ts"
   },
   "keywords": [
     "osrs",

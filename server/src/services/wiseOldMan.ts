@@ -326,6 +326,12 @@ export class WiseOldManService {
         skills,
       };
     } catch (error: any) {
+      const responseData = error.response?.data;
+      console.error(`  ❌ WiseOldMan API error for ${username}:`, {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: responseData,
+      });
       throw new Error(`Failed to update player and get snapshot: ${error.message}`);
     }
   }
