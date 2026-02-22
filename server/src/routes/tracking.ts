@@ -24,10 +24,8 @@ const inFlightProgressRequests = new Map<string, Promise<any>>();
 function getCachedProgress(eventId: string): any | null {
   const cached = progressCache.get(eventId);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-    console.log(`📦 Cache HIT for event ${eventId}`);
     return cached.data;
   }
-  console.log(`📦 Cache MISS for event ${eventId}`);
   return null;
 }
 

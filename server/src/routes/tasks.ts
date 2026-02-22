@@ -45,10 +45,8 @@ export function invalidateTasksCache(eventId: string): void {
 function getCachedCompletions(taskId: string): any | null {
   const cached = completionsCache.get(taskId);
   if (cached && Date.now() - cached.timestamp < COMPLETIONS_CACHE_TTL_MS) {
-    console.log(`📦 Completions cache HIT for task ${taskId}`);
     return cached.data;
   }
-  console.log(`📦 Completions cache MISS for task ${taskId}`);
   return null;
 }
 
@@ -62,7 +60,6 @@ export function invalidateCompletionsCache(taskId: string): void {
 
 // Get tasks for an event
 router.get('/event/:eventId', asyncHandler(async (req: Request, res: Response) => {
-  console.log(`📋 GET /tasks/event/${req.params.eventId}`);
   
   const eventId = req.params.eventId;
   
@@ -102,7 +99,6 @@ router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
 // Get task completions (who completed this task)
 router.get('/:id/completions', asyncHandler(async (req: Request, res: Response) => {
   const taskId = req.params.id;
-  console.log(`📋 GET /tasks/${taskId}/completions`);
   
   // Check cache first
   const cached = getCachedCompletions(taskId);
