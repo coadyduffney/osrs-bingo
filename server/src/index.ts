@@ -69,7 +69,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Request logging middleware
 app.use((req, _res, next) => {
-  console.log(`📥 ${req.method} ${req.path}`);
+  const userId = (req as any).user?.id || 'anonymous';
+  console.log(`📥 ${req.method} ${req.path} [user: ${userId}]`);
   next();
 });
 
