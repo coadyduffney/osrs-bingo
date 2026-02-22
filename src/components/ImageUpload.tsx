@@ -32,11 +32,9 @@ const ImageUpload = memo(function ImageUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
+  const processFile = useCallback(async (file: File) => {
     setError(null);
 
     // Validate file
@@ -56,6 +54,44 @@ const ImageUpload = memo(function ImageUpload({
       console.error('Preview error:', err);
     }
   }, [onFileSelect]);
+
+  const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await processFile(file);
+  }, [processFile]);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!disabled) {
+      setIsDragging(true);
+    }
+  }, [disabled]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (disabled) return;
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      await processFile(files[0]);
+    }
+  }, [disabled, processFile]);
 
   const handleRemove = useCallback(() => {
     setLocalPreview(null);
@@ -93,17 +129,24 @@ const ImageUpload = memo(function ImageUpload({
             textAlign: 'center',
             cursor: disabled ? 'not-allowed' : 'pointer',
             opacity: disabled ? 0.5 : 1,
+            borderColor: isDragging ? 'primary.500' : undefined,
+            bgcolor: isDragging ? 'background.level1' : undefined,
+            transition: 'all 0.2s',
             '&:hover': {
               borderColor: disabled ? undefined : 'primary.500',
               bgcolor: disabled ? undefined : 'background.level1',
             },
           }}
           onClick={disabled ? undefined : handleClick}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
         >
           <CardContent sx={{ py: 4 }}>
             <CloudUploadIcon sx={{ fontSize: 48, color: 'text.tertiary', mb: 2 }} />
             <Typography level="title-md" sx={{ mb: 0.5 }}>
-              Click to upload verification image
+              {isDragging ? 'Drop image here' : 'Drag & drop or click to upload'}
             </Typography>
             <Typography level="body-sm" sx={{ color: 'text.tertiary' }}>
               JPG, PNG, GIF, or WebP (max {maxSizeMB}MB)

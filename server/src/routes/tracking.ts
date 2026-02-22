@@ -16,7 +16,10 @@ const RETRY_DELAY_MS = 10000;
 
 // Simple in-memory cache for XP progress to reduce Firestore reads
 const progressCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL_MS = 30000; // 30 seconds cache
+const CACHE_TTL_MS = 300000; // 5 minutes cache
+
+// In-flight request tracking to prevent duplicate concurrent requests
+const inFlightProgressRequests = new Map<string, Promise<any>>();
 
 function getCachedProgress(eventId: string): any | null {
   const cached = progressCache.get(eventId);
@@ -543,36 +546,46 @@ router.get('/:eventId/progress', async (req: Request, res: Response, next: NextF
       return res.json(cached);
     }
 
-    // Get all baseline and current snapshots
-    const snapshotsSnapshot = await db
-      .collection('playerSnapshots')
-      .where('eventId', '==', eventId)
-      .get();
+    // Check if there's already an in-flight request for this event
+    const existingRequest = inFlightProgressRequests.get(eventId);
+    if (existingRequest) {
+      console.log(`⏳ Waiting for in-flight progress request for event ${eventId}`);
+      const result = await existingRequest;
+      return res.json(result);
+    }
 
-    const baselines = new Map();
-    const currents = new Map();
+    // Create new request promise
+    const requestPromise = (async () => {
+      // Get all baseline and current snapshots
+      const snapshotsSnapshot = await db
+        .collection('playerSnapshots')
+        .where('eventId', '==', eventId)
+        .get();
 
-    snapshotsSnapshot.docs.forEach((doc) => {
-      const data = doc.data();
-      const key = `${data.teamId}-${data.userId}`;
+      const baselines = new Map();
+      const currents = new Map();
 
-      if (data.snapshotType === 'baseline') {
-        baselines.set(key, data);
-      } else if (data.snapshotType === 'current') {
-        currents.set(key, data);
-      }
-    });
+      snapshotsSnapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        const key = `${data.teamId}-${data.userId}`;
 
-    // Calculate gains per team
-    const teamGains = new Map();
+        if (data.snapshotType === 'baseline') {
+          baselines.set(key, data);
+        } else if (data.snapshotType === 'current') {
+          currents.set(key, data);
+        }
+      });
 
-    baselines.forEach((baseline, key) => {
-      const current = currents.get(key);
-      if (!current) return;
+      // Calculate gains per team
+      const teamGains = new Map();
 
-      const teamId = baseline.teamId;
-      if (!teamGains.has(teamId)) {
-        teamGains.set(teamId, {
+      baselines.forEach((baseline, key) => {
+        const current = currents.get(key);
+        if (!current) return;
+
+        const teamId = baseline.teamId;
+        if (!teamGains.has(teamId)) {
+          teamGains.set(teamId, {
           teamId,
           members: [],
           totalGains: {},
@@ -605,21 +618,32 @@ router.get('/:eventId/progress', async (req: Request, res: Response, next: NextF
         teamData.totalGains[skill] += gain;
       }
 
-      teamGains.get(teamId).members.push(memberGains);
-    });
+        teamGains.get(teamId).members.push(memberGains);
+      });
 
-    const response = {
-      success: true,
-      data: {
-        eventId,
-        teams: Array.from(teamGains.values()),
-      },
-    };
+      const response = {
+        success: true,
+        data: {
+          eventId,
+          teams: Array.from(teamGains.values()),
+        },
+      };
 
-    // Cache the response
-    setCachedProgress(eventId, response);
+      // Cache the response
+      setCachedProgress(eventId, response);
+      return response;
+    })();
 
-    return res.json(response);
+    // Store the in-flight request
+    inFlightProgressRequests.set(eventId, requestPromise);
+
+    try {
+      const result = await requestPromise;
+      return res.json(result);
+    } finally {
+      // Clean up the in-flight request
+      inFlightProgressRequests.delete(eventId);
+    }
   } catch (error) {
     return next(error);
   }

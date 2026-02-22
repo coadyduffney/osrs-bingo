@@ -20,7 +20,11 @@ const userRepo = new UserRepository();
 
 // Cache for tasks to reduce Firestore reads
 const tasksCache = new Map<string, { data: any; timestamp: number }>();
-const TASKS_CACHE_TTL_MS = 60000; // 60 seconds
+const TASKS_CACHE_TTL_MS = 300000; // 5 minutes (increased from 60s)
+
+// Cache for task completions
+const completionsCache = new Map<string, { data: any; timestamp: number }>();
+const COMPLETIONS_CACHE_TTL_MS = 300000; // 5 minutes
 
 function getCachedTasks(eventId: string): any | null {
   const cached = tasksCache.get(eventId);
@@ -36,6 +40,24 @@ function setCachedTasks(eventId: string, data: any): void {
 
 export function invalidateTasksCache(eventId: string): void {
   tasksCache.delete(eventId);
+}
+
+function getCachedCompletions(taskId: string): any | null {
+  const cached = completionsCache.get(taskId);
+  if (cached && Date.now() - cached.timestamp < COMPLETIONS_CACHE_TTL_MS) {
+    console.log(`📦 Completions cache HIT for task ${taskId}`);
+    return cached.data;
+  }
+  console.log(`📦 Completions cache MISS for task ${taskId}`);
+  return null;
+}
+
+function setCachedCompletions(taskId: string, data: any): void {
+  completionsCache.set(taskId, { data, timestamp: Date.now() });
+}
+
+export function invalidateCompletionsCache(taskId: string): void {
+  completionsCache.delete(taskId);
 }
 
 // Get tasks for an event
@@ -79,8 +101,16 @@ router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
 
 // Get task completions (who completed this task)
 router.get('/:id/completions', asyncHandler(async (req: Request, res: Response) => {
-  console.log(`📋 GET /tasks/${req.params.id}/completions`);
-  const completions = await taskCompletionRepo.findByTask(req.params.id);
+  const taskId = req.params.id;
+  console.log(`📋 GET /tasks/${taskId}/completions`);
+  
+  // Check cache first
+  const cached = getCachedCompletions(taskId);
+  if (cached) {
+    return res.json(cached);
+  }
+  
+  const completions = await taskCompletionRepo.findByTask(taskId);
 
   // Batch fetch all users at once instead of N+1 queries
   const uniqueUserIds = [...new Set(completions.map(c => c.completedBy))];
@@ -103,10 +133,15 @@ router.get('/:id/completions', asyncHandler(async (req: Request, res: Response) 
     };
   });
 
-  res.json({
+  const response = {
     success: true,
     data: enrichedCompletions,
-  });
+  };
+  
+  // Cache the response
+  setCachedCompletions(taskId, response);
+
+  return res.json(response);
 }));
 
 // Create task (requires auth and event creator)
@@ -189,6 +224,9 @@ router.post(
 
     await taskRepo.uncompleteTask(req.params.id, teamId);
 
+    // Invalidate completions cache
+    invalidateCompletionsCache(req.params.id);
+
     // Fetch updated task
     const updatedTask = await taskRepo.findById(req.params.id);
 
@@ -240,6 +278,9 @@ router.post(
     } : undefined;
 
     await taskRepo.markCompleted(req.params.id, teamId, req.user.id, verificationData);
+
+    // Invalidate completions cache
+    invalidateCompletionsCache(req.params.id);
 
     // Fetch updated task
     const updatedTask = await taskRepo.findById(req.params.id);
