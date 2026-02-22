@@ -67,9 +67,24 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+import jwt from 'jsonwebtoken';
+
 // Request logging middleware
 app.use((req, _res, next) => {
-  const userId = (req as any).user?.id || 'anonymous';
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  let userId = 'anonymous';
+  if (token) {
+    try {
+      const secret = process.env.JWT_SECRET || 'your-secret-key';
+      const decoded = jwt.verify(token, secret) as { id: string; username: string };
+      userId = decoded.id;
+    } catch {
+      // Invalid token, keep as anonymous
+    }
+  }
+  
   console.log(`📥 ${req.method} ${req.path} [user: ${userId}]`);
   next();
 });
