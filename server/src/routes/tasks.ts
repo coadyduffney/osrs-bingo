@@ -18,15 +18,49 @@ const eventRepo = new EventRepository();
 const taskCompletionRepo = new TaskCompletionRepository();
 const userRepo = new UserRepository();
 
+// Cache for tasks to reduce Firestore reads
+const tasksCache = new Map<string, { data: any; timestamp: number }>();
+const TASKS_CACHE_TTL_MS = 60000; // 60 seconds
+
+function getCachedTasks(eventId: string): any | null {
+  const cached = tasksCache.get(eventId);
+  if (cached && Date.now() - cached.timestamp < TASKS_CACHE_TTL_MS) {
+    return cached.data;
+  }
+  return null;
+}
+
+function setCachedTasks(eventId: string, data: any): void {
+  tasksCache.set(eventId, { data, timestamp: Date.now() });
+}
+
+export function invalidateTasksCache(eventId: string): void {
+  tasksCache.delete(eventId);
+}
+
 // Get tasks for an event
 router.get('/event/:eventId', asyncHandler(async (req: Request, res: Response) => {
   console.log(`📋 GET /tasks/event/${req.params.eventId}`);
-  const eventTasks = await taskRepo.findByEvent(req.params.eventId);
+  
+  const eventId = req.params.eventId;
+  
+  // Check cache first
+  const cached = getCachedTasks(eventId);
+  if (cached) {
+    return res.json(cached);
+  }
+  
+  const eventTasks = await taskRepo.findByEvent(eventId);
 
-  res.json({
+  const response = {
     success: true,
     data: eventTasks,
-  });
+  };
+  
+  // Cache the response
+  setCachedTasks(eventId, response);
+
+  res.json(response);
 }));
 
 // Get single task
@@ -103,10 +137,12 @@ router.post('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Resp
       position,
       row: 0, // Will be calculated in repository
       col: 0, // Will be calculated in repository
-      verificationRequired: false,
       isXPTask: isXPTask || false,
       xpRequirement: xpRequirement || null,
     });
+
+    // Invalidate tasks cache for this event
+    invalidateTasksCache(eventId);
 
     res.status(201).json({
       success: true,
@@ -281,6 +317,9 @@ router.put('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res: Re
   const updates = req.body;
   await taskRepo.update(req.params.id, updates);
 
+  // Invalidate tasks cache for this event
+  invalidateTasksCache(task.eventId);
+
   // Fetch updated task
   const updatedTask = await taskRepo.findById(req.params.id);
 
@@ -309,6 +348,9 @@ router.delete('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res:
   }
 
   await taskRepo.delete(req.params.id);
+
+  // Invalidate tasks cache for this event
+  invalidateTasksCache(task.eventId);
 
   res.json({
     success: true,
