@@ -20,6 +20,7 @@ const userRepo = new UserRepository();
 
 // Get tasks for an event
 router.get('/event/:eventId', asyncHandler(async (req: Request, res: Response) => {
+  console.log(`📋 GET /tasks/event/${req.params.eventId}`);
   const eventTasks = await taskRepo.findByEvent(req.params.eventId);
 
   res.json({
@@ -44,6 +45,7 @@ router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
 
 // Get task completions (who completed this task)
 router.get('/:id/completions', asyncHandler(async (req: Request, res: Response) => {
+  console.log(`📋 GET /tasks/${req.params.id}/completions`);
   const completions = await taskCompletionRepo.findByTask(req.params.id);
 
   // Batch fetch all users at once instead of N+1 queries
