@@ -60,7 +60,7 @@ router.get('/event/:eventId', asyncHandler(async (req: Request, res: Response) =
   // Cache the response
   setCachedTasks(eventId, response);
 
-  res.json(response);
+  return res.json(response);
 }));
 
 // Get single task
@@ -139,6 +139,7 @@ router.post('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Resp
       col: 0, // Will be calculated in repository
       isXPTask: isXPTask || false,
       xpRequirement: xpRequirement || null,
+      verificationRequired: false,
     });
 
     // Invalidate tasks cache for this event
