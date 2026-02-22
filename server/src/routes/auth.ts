@@ -223,7 +223,7 @@ router.put('/me', authMiddleware, asyncHandler(async (req: Request, res: Respons
 }));
 
 // Get multiple users by IDs (for fetching team members)
-router.post('/users/batch', authMiddleware, asyncHandler(async (req: Request, res: Response) => {
+router.post('/users/batch', authMiddleware, asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { userIds } = req.body;
 
   if (!Array.isArray(userIds)) {
@@ -236,7 +236,7 @@ router.post('/users/batch', authMiddleware, asyncHandler(async (req: Request, re
   // Check cache first
   const cached = getCachedUserBatch(cacheKey);
   if (cached) {
-    return res.json(cached);
+    return void res.json(cached);
   }
 
   const users = await Promise.all(
@@ -258,7 +258,7 @@ router.post('/users/batch', authMiddleware, asyncHandler(async (req: Request, re
   // Cache the response
   setCachedUserBatch(cacheKey, response);
 
-  res.json(response);
+  return void res.json(response);
 }));
 
 export default router;
