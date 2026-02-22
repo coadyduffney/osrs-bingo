@@ -14,6 +14,7 @@ import { Team, User, tasksApi } from '../services/api';
 interface LeaderboardProps {
   teams: Team[];
   members: Map<string, User[]>; // teamId -> array of users
+  eventId: string; // Add eventId to optimize fetching
 }
 
 interface TeamEntry {
@@ -43,36 +44,25 @@ interface TaskCompletion {
   points: number;
 }
 
-const Leaderboard = memo(function Leaderboard({ teams, members }: LeaderboardProps) {
+const Leaderboard = memo(function Leaderboard({ teams, members, eventId }: LeaderboardProps) {
   const [completions, setCompletions] = useState<TaskCompletion[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch all task completions for the event
+  // Fetch all task completions for the event in one query
   useEffect(() => {
     const fetchCompletions = async () => {
       try {
         setLoading(true);
-        // Get all unique task IDs across all teams
-        const uniqueTaskIds = new Set<string>();
-        teams.forEach(team => {
-          team.completedTaskIds.forEach(taskId => uniqueTaskIds.add(taskId));
-        });
         
-        const allCompletions: TaskCompletion[] = [];
-        
-        // Fetch completions for each unique task only once
-        for (const taskId of uniqueTaskIds) {
-          const response = await tasksApi.getCompletions(taskId);
-          if (response.success) {
-            allCompletions.push(...response.data.map((c: any) => ({
-              taskId,
-              completedBy: c.completedBy,
-              points: c.points,
-            })));
-          }
+        // Use the optimized endpoint that fetches all completions for an event in one query
+        const response = await tasksApi.getEventCompletions(eventId);
+        if (response.success) {
+          setCompletions(response.data.map((c: any) => ({
+            taskId: c.taskId,
+            completedBy: c.completedBy,
+            points: c.points,
+          })));
         }
-        
-        setCompletions(allCompletions);
       } catch (err) {
         console.error('Error fetching completions for leaderboard:', err);
       } finally {
@@ -80,12 +70,12 @@ const Leaderboard = memo(function Leaderboard({ teams, members }: LeaderboardPro
       }
     };
     
-    if (teams.length > 0) {
+    if (eventId) {
       fetchCompletions();
     } else {
       setLoading(false);
     }
-  }, [teams]);
+  }, [eventId]);
 
   // Calculate individual score (sum of points from tasks they completed)
   const getIndividualScore = (userId: string): number => {

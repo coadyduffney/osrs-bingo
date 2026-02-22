@@ -144,6 +144,52 @@ router.get('/:id/completions', asyncHandler(async (req: Request, res: Response) 
   return res.json(response);
 }));
 
+// Get all completions for an event (optimized for leaderboard)
+router.get('/event/:eventId/completions', asyncHandler(async (req: Request, res: Response) => {
+  const eventId = req.params.eventId;
+  console.log(`📋 GET /tasks/event/${eventId}/completions`);
+  
+  // Check cache first
+  const cacheKey = `event-completions-${eventId}`;
+  const cached = getCachedCompletions(cacheKey);
+  if (cached) {
+    return res.json(cached);
+  }
+  
+  const completions = await taskCompletionRepo.findByEvent(eventId);
+
+  // Batch fetch all users at once instead of N+1 queries
+  const uniqueUserIds = [...new Set(completions.map(c => c.completedBy))];
+  const users = await Promise.all(
+    uniqueUserIds.map(id => userRepo.findById(id))
+  );
+  
+  const userMap = new Map(
+    users.filter(u => u !== null).map(u => [u!.id, u!])
+  );
+
+  // Enrich completions with user information
+  const enrichedCompletions = completions.map(completion => {
+    const user = userMap.get(completion.completedBy);
+    return {
+      ...completion,
+      completedByUsername: user?.username || 'Unknown User',
+      completedByDisplayName:
+        user?.displayName || user?.username || 'Unknown User',
+    };
+  });
+
+  const response = {
+    success: true,
+    data: enrichedCompletions,
+  };
+  
+  // Cache the response
+  setCachedCompletions(cacheKey, response);
+
+  return res.json(response);
+}));
+
 // Create task (requires auth and event creator)
 router.post('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
   try {
@@ -224,11 +270,14 @@ router.post(
 
     await taskRepo.uncompleteTask(req.params.id, teamId);
 
-    // Invalidate completions cache
-    invalidateCompletionsCache(req.params.id);
-
     // Fetch updated task
     const updatedTask = await taskRepo.findById(req.params.id);
+
+    // Invalidate completions cache
+    invalidateCompletionsCache(req.params.id);
+    if (updatedTask) {
+      invalidateCompletionsCache(`event-completions-${updatedTask.eventId}`);
+    }
 
     // Emit Socket.IO event to all clients in the event room
     const io = (req.app as any).get('io');
@@ -279,11 +328,14 @@ router.post(
 
     await taskRepo.markCompleted(req.params.id, teamId, req.user.id, verificationData);
 
-    // Invalidate completions cache
-    invalidateCompletionsCache(req.params.id);
-
     // Fetch updated task
     const updatedTask = await taskRepo.findById(req.params.id);
+
+    // Invalidate completions cache
+    invalidateCompletionsCache(req.params.id);
+    if (updatedTask) {
+      invalidateCompletionsCache(`event-completions-${updatedTask.eventId}`);
+    }
 
     // Get team name and member RSN for Discord notification
     let teamName = 'Unknown Team';

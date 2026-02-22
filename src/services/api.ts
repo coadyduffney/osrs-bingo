@@ -330,6 +330,11 @@ export const tasksApi = {
       `/api/tasks/${taskId}/completions`,
     ),
 
+  getEventCompletions: (eventId: string) =>
+    apiClient.get<ApiResponse<TaskCompletion[]>>(
+      `/api/tasks/event/${eventId}/completions`,
+    ),
+
   create: (data: {
     eventId: string;
     title: string;

@@ -15,6 +15,34 @@ const womService = new WiseOldManService();
 const WOM_GROUP_ID = parseInt(process.env.WOM_GROUP_ID || '22343');
 const WOM_VERIFICATION_CODE = process.env.WOM_VERIFICATION_CODE || '';
 
+// Cache for user batch queries
+const userBatchCache = new Map<string, { data: any; timestamp: number }>();
+const USER_BATCH_CACHE_TTL_MS = 300000; // 5 minutes
+
+function getCachedUserBatch(cacheKey: string): any | null {
+  const cached = userBatchCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < USER_BATCH_CACHE_TTL_MS) {
+    console.log(`📦 User batch cache HIT for key ${cacheKey}`);
+    return cached.data;
+  }
+  return null;
+}
+
+function setCachedUserBatch(cacheKey: string, data: any): void {
+  userBatchCache.set(cacheKey, { data, timestamp: Date.now() });
+}
+
+export function invalidateUserBatchCache(userId: string): void {
+  // Clear all caches that might contain this user
+  const keysToDelete: string[] = [];
+  for (const key of userBatchCache.keys()) {
+    if (key.includes(userId)) {
+      keysToDelete.push(key);
+    }
+  }
+  keysToDelete.forEach(key => userBatchCache.delete(key));
+}
+
 // Validation schemas
 const registerSchema = z.object({
   username: z.string().min(3).max(20),
@@ -175,6 +203,9 @@ router.put('/me', authMiddleware, asyncHandler(async (req: Request, res: Respons
 
   await userRepo.update(userId, updateData);
 
+  // Invalidate user batch caches that might contain this user
+  invalidateUserBatchCache(userId);
+
   // Fetch updated user
   const updatedUser = await userRepo.findById(userId);
   
@@ -199,6 +230,15 @@ router.post('/users/batch', authMiddleware, asyncHandler(async (req: Request, re
     throw new ApiErrorClass(400, 'userIds must be an array');
   }
 
+  // Create a cache key from sorted user IDs to ensure consistent caching
+  const cacheKey = `users-${userIds.slice().sort().join(',')}`;
+  
+  // Check cache first
+  const cached = getCachedUserBatch(cacheKey);
+  if (cached) {
+    return res.json(cached);
+  }
+
   const users = await Promise.all(
     userIds.map(async (id: string) => {
       const user = await userRepo.findById(id);
@@ -210,10 +250,15 @@ router.post('/users/batch', authMiddleware, asyncHandler(async (req: Request, re
     })
   );
 
-  res.json({
+  const response = {
     success: true,
     data: users.filter(u => u !== null)
-  });
+  };
+
+  // Cache the response
+  setCachedUserBatch(cacheKey, response);
+
+  res.json(response);
 }));
 
 export default router;
