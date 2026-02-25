@@ -691,6 +691,7 @@ router.post('/:eventId/check-xp-tasks', async (req: Request, res: Response, next
 
     // Calculate team XP gains
     const teamGains = new Map<string, { [skill: string]: number }>();
+    const playerGains = new Map<string, { teamId: string; userId: string; rsn: string; gains: { [skill: string]: number } }>();
 
     baselines.forEach((baseline, key) => {
       const current = currents.get(key);
@@ -702,6 +703,7 @@ router.post('/:eventId/check-xp-tasks', async (req: Request, res: Response, next
       }
 
       const gains = teamGains.get(teamId)!;
+      const individualGains: { [skill: string]: number } = {};
 
       // Calculate skill gains
       for (const skill in baseline.skills) {
@@ -713,7 +715,16 @@ router.post('/:eventId/check-xp-tasks', async (req: Request, res: Response, next
           gains[skill] = 0;
         }
         gains[skill] += gain;
+        individualGains[skill] = gain;
       }
+
+      // Store individual player gains
+      playerGains.set(key, {
+        teamId,
+        userId: baseline.userId,
+        rsn: baseline.rsn,
+        gains: individualGains,
+      });
     });
 
     // Check each task and auto-complete if requirement met
@@ -732,10 +743,28 @@ router.post('/:eventId/check-xp-tasks', async (req: Request, res: Response, next
 
         // If team gained enough XP and hasn't completed this task yet
         if (skillGain >= amount && !task.completedByTeamIds.includes(teamId)) {
+          // Find the player who contributed the most XP for this skill
+          let topContributor: { userId: string; rsn: string; gain: number } | null = null;
+          
+          playerGains.forEach((player) => {
+            if (player.teamId === teamId) {
+              const playerSkillGain = player.gains[skill.toLowerCase()] || 0;
+              if (!topContributor || playerSkillGain > topContributor.gain) {
+                topContributor = {
+                  userId: player.userId,
+                  rsn: player.rsn,
+                  gain: playerSkillGain,
+                };
+              }
+            }
+          });
+
+          const now = Timestamp.now();
+
           // Mark task as completed
           batch.update(taskDoc.ref, {
             completedByTeamIds: [...task.completedByTeamIds, teamId],
-            updatedAt: Timestamp.now(),
+            updatedAt: now,
           });
 
           // Update team's completed tasks
@@ -743,8 +772,26 @@ router.post('/:eventId/check-xp-tasks', async (req: Request, res: Response, next
           batch.update(teamRef, {
             completedTaskIds: FieldValue.arrayUnion(taskDoc.id) as any,
             score: FieldValue.increment(task.points) as any,
-            updatedAt: Timestamp.now(),
+            updatedAt: now,
           });
+
+          // Create task completion record (assign to top contributor)
+          if (topContributor) {
+            const completionRef = db.collection('taskCompletions').doc();
+            batch.set(completionRef, {
+              id: completionRef.id,
+              taskId: taskDoc.id,
+              teamId,
+              eventId,
+              completedBy: topContributor.userId,
+              completedAt: now,
+              points: task.points,
+              verified: true,
+              verificationNote: `Auto-completed via XP tracking (${topContributor.rsn} gained ${topContributor.gain.toLocaleString()} ${skill} XP)`,
+              createdAt: now,
+              updatedAt: now,
+            });
+          }
 
           completedTasks.push({
             taskId: taskDoc.id,
