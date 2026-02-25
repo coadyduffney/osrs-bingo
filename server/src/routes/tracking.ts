@@ -736,6 +736,7 @@ router.post('/:eventId/check-xp-tasks', async (req: Request, res: Response, next
       if (!task.xpRequirement) continue;
 
       const { skill, amount } = task.xpRequirement;
+      let topContributor: { userId: string; rsn: string; gain: number } | null = null;
 
       // Check each team's progress
       teamGains.forEach((gains, teamId) => {
@@ -744,12 +745,11 @@ router.post('/:eventId/check-xp-tasks', async (req: Request, res: Response, next
         // If team gained enough XP and hasn't completed this task yet
         if (skillGain >= amount && !task.completedByTeamIds.includes(teamId)) {
           // Find the player who contributed the most XP for this skill
-          let topContributor: { userId: string; rsn: string; gain: number } | null = null;
           
           playerGains.forEach((player) => {
             if (player.teamId === teamId) {
               const playerSkillGain = player.gains[skill.toLowerCase()] || 0;
-              if (!topContributor || playerSkillGain > topContributor.gain) {
+              if (topContributor === null || playerSkillGain > topContributor.gain) {
                 topContributor = {
                   userId: player.userId,
                   rsn: player.rsn,
