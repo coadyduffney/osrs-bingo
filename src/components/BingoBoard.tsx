@@ -73,7 +73,8 @@ const BingoBoard = memo(function BingoBoard({
     if (task?.xpRequirement && xpProgress && userTeamId) {
       const teamProgress = xpProgress.find(t => t.teamId === userTeamId);
       if (teamProgress) {
-        const skill = task.xpRequirement.skill.toLowerCase();
+        const rawSkill = task.xpRequirement.skill.toLowerCase();
+        const skill = rawSkill === 'runecraft' ? 'runecrafting' : rawSkill;
         xpRequired = task.xpRequirement.amount;
         xpGained = teamProgress.totalGains[skill] || 0;
         xpProgressPercent = Math.min(100, Math.round((xpGained / xpRequired) * 100));
