@@ -737,10 +737,11 @@ router.post('/:eventId/check-xp-tasks', async (req: Request, res: Response, next
 
       const { skill, amount } = task.xpRequirement;
       let topContributor: { userId: string; rsn: string; gain: number } | null = null;
+      const normalizedSkill = skill.toLowerCase() === 'runecraft' ? 'runecrafting' : skill.toLowerCase();
 
       // Check each team's progress
       teamGains.forEach((gains, teamId) => {
-        const skillGain = gains[skill.toLowerCase()] || 0;
+        const skillGain = gains[normalizedSkill] || 0;
 
         // If team gained enough XP and hasn't completed this task yet
         if (skillGain >= amount && !task.completedByTeamIds.includes(teamId)) {

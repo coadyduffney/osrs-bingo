@@ -5,7 +5,7 @@ const eventId = 'Pit5RcAkebJ8mFSZ0gMQ';
 
 const tasks = [
   { taskNum: 1, title: '5m agi xp', difficulty: 2, isXPTask: true, xpSkill: 'agility', xpAmount: 5000000 },
-  { taskNum: 2, title: '5m rc xp', difficulty: 2, isXPTask: true, xpSkill: 'runecraft', xpAmount: 5000000 },
+  { taskNum: 2, title: '5m rc xp', difficulty: 2, isXPTask: true, xpSkill: 'runecrafting', xpAmount: 5000000 },
   { taskNum: 3, title: '4m mining xp', difficulty: 2, isXPTask: true, xpSkill: 'mining', xpAmount: 4000000 },
   { taskNum: 4, title: '6m sailing xp', difficulty: 2, isXPTask: true, xpSkill: 'agility', xpAmount: 6000000 }, // Note: OSRS doesn't have sailing, using agility
   { taskNum: 5, title: '1 unsired', difficulty: 3 },
