@@ -38,22 +38,23 @@ setSocketIO(io);
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
-  console.log(`✅ Client connected: ${socket.id}`);
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] ✅ Client connected: ${socket.id}`);
 
   // Join event room
   socket.on('join-event', (eventId: string) => {
     socket.join(`event-${eventId}`);
-    console.log(`👤 Client ${socket.id} joined event-${eventId}`);
+    console.log(`[${timestamp}] 👤 Client ${socket.id} joined event-${eventId}`);
   });
 
   // Leave event room
   socket.on('leave-event', (eventId: string) => {
     socket.leave(`event-${eventId}`);
-    console.log(`👋 Client ${socket.id} left event-${eventId}`);
+    console.log(`[${timestamp}] 👋 Client ${socket.id} left event-${eventId}`);
   });
 
   socket.on('disconnect', () => {
-    console.log(`❌ Client disconnected: ${socket.id}`);
+    console.log(`[${timestamp}] ❌ Client disconnected: ${socket.id}`);
   });
 });
 
@@ -69,23 +70,38 @@ app.use(express.urlencoded({ extended: true }));
 
 import jwt from 'jsonwebtoken';
 
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        username: string;
+      };
+    }
+  }
+}
+
 // Request logging middleware
 app.use((req, _res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   
   let userId = 'anonymous';
+  let username = 'anonymous';
   if (token) {
     try {
       const secret = process.env.JWT_SECRET || 'your-secret-key';
       const decoded = jwt.verify(token, secret) as { id: string; username: string };
       userId = decoded.id;
+      username = decoded.username;
+      req.user = { id: decoded.id, username: decoded.username };
     } catch {
       // Invalid token, keep as anonymous
     }
   }
   
-  console.log(`📥 ${req.method} ${req.path} [user: ${userId}]`);
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] 📥 ${req.method} ${req.path} [user: ${username}(${userId})]`);
   next();
 });
 
