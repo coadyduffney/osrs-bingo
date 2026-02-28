@@ -16,6 +16,8 @@ import LinearProgress from '@mui/joy/LinearProgress';
 import Chip from '@mui/joy/Chip';
 import Button from '@mui/joy/Button';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 interface XPProgressProps {
   eventId: string;
@@ -55,6 +57,76 @@ function formatXP(xp: number): string {
     return `${(xp / 1000).toFixed(1)}K`;
   }
   return xp.toString();
+}
+
+interface MemberCardProps {
+  member: MemberGains;
+}
+
+function MemberCard({ member }: MemberCardProps) {
+  const [showAllSkills, setShowAllSkills] = useState(false);
+
+  const memberTotal = member.gains.overall?.gain ||
+    Object.entries(member.gains)
+      .filter(([skill]) => skill !== 'overall')
+      .reduce((sum, [, g]) => sum + g.gain, 0);
+
+  const allMemberSkills = Object.entries(member.gains)
+    .filter(([skill]) => skill !== 'overall')
+    .filter(([, g]) => g.gain > 0)
+    .sort(([, a], [, b]) => b.gain - a.gain);
+
+  const displaySkills = showAllSkills ? allMemberSkills : allMemberSkills.slice(0, 3);
+  const hasMoreSkills = allMemberSkills.length > 3;
+
+  return (
+    <Card variant="outlined">
+      <CardContent>
+        <Stack spacing={2}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography level="title-sm">{member.rsn}</Typography>
+            <Chip size="sm" variant="soft" color="success">
+              {formatXP(memberTotal)} XP
+            </Chip>
+          </Stack>
+
+          {displaySkills.length > 0 && (
+            <Stack spacing={1}>
+              {displaySkills.map(([skill, gains]) => (
+                <Box key={skill}>
+                  <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                    <Typography level="body-sm">
+                      {skill.charAt(0).toUpperCase() + skill.slice(1)}
+                    </Typography>
+                    <Typography level="body-sm" sx={{ color: 'success.500' }}>
+                      +{formatXP(gains.gain)}
+                    </Typography>
+                  </Stack>
+                  <LinearProgress
+                    determinate
+                    value={Math.min((gains.gain / 1000000) * 100, 100)}
+                    color="success"
+                    size="sm"
+                  />
+                </Box>
+              ))}
+            </Stack>
+          )}
+
+          {hasMoreSkills && (
+            <Button
+              size="sm"
+              variant="plain"
+              startDecorator={showAllSkills ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              onClick={() => setShowAllSkills(!showAllSkills)}
+            >
+              {showAllSkills ? 'Show less' : `Show all (${allMemberSkills.length} skills)`}
+            </Button>
+          )}
+        </Stack>
+      </CardContent>
+    </Card>
+  );
 }
 
 function XPProgress({ eventId, teams, isEventCreator = false }: XPProgressProps) {
@@ -270,57 +342,9 @@ function XPProgress({ eventId, teams, isEventCreator = false }: XPProgressProps)
               <AccordionDetails>
                 <Stack spacing={3}>
                   {/* Team Member Details */}
-                  {teamData.members.map((member) => {
-                    // Use 'overall' stat directly if available, otherwise sum individual skills
-                    const memberTotal = member.gains.overall?.gain || 
-                      Object.entries(member.gains)
-                        .filter(([skill]) => skill !== 'overall')
-                        .reduce((sum, [, g]) => sum + g.gain, 0);
-                    
-                    const topMemberSkills = Object.entries(member.gains)
-                      .filter(([skill]) => skill !== 'overall') // Exclude 'overall' as it's not a real skill
-                      .sort(([, a], [, b]) => b.gain - a.gain)
-                      .slice(0, 3)
-                      .filter(([, g]) => g.gain > 0);
-
-                    return (
-                      <Card key={member.userId} variant="outlined">
-                        <CardContent>
-                          <Stack spacing={2}>
-                            <Stack direction="row" justifyContent="space-between" alignItems="center">
-                              <Typography level="title-sm">{member.rsn}</Typography>
-                              <Chip size="sm" variant="soft" color="success">
-                                {formatXP(memberTotal)} XP
-                              </Chip>
-                            </Stack>
-
-                            {topMemberSkills.length > 0 && (
-                              <Stack spacing={1}>
-                                {topMemberSkills.map(([skill, gains]) => (
-                                  <Box key={skill}>
-                                    <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
-                                      <Typography level="body-sm">
-                                        {skill.charAt(0).toUpperCase() + skill.slice(1)}
-                                      </Typography>
-                                      <Typography level="body-sm" sx={{ color: 'success.500' }}>
-                                        +{formatXP(gains.gain)}
-                                      </Typography>
-                                    </Stack>
-                                    <LinearProgress
-                                      determinate
-                                      value={Math.min((gains.gain / 1000000) * 100, 100)}
-                                      color="success"
-                                      size="sm"
-                                    />
-                                  </Box>
-                                ))}
-                              </Stack>
-                            )}
-                          </Stack>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
+                  {teamData.members.map((member) => (
+                    <MemberCard key={member.userId} member={member} />
+                  ))}
 
                   {/* All Skills Breakdown */}
                   <Card variant="soft">
