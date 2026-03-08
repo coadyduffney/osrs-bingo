@@ -216,6 +216,57 @@ router.post('/:id/publish', authMiddleware, asyncHandler(async (req: Request, re
   });
 }));
 
+// End event (set eventEndedAt and status to completed) - protected route
+router.post('/:id/end', authMiddleware, asyncHandler(async (req: Request, res: Response) => {
+  const event = await eventRepo.findById(req.params.id);
+  
+  if (!event) {
+    throw new ApiErrorClass(404, 'Event not found');
+  }
+
+  const currentUserId = (req as any).user.id;
+
+  // Only creator or admin can end event
+  if (!isEventCreatorOrAdmin(event, currentUserId)) {
+    throw new ApiErrorClass(403, 'Only the event creator or admins can end this event');
+  }
+
+  // Can only end active events
+  if (event.status !== 'active') {
+    throw new ApiErrorClass(400, `Cannot end event with status: ${event.status}. Event must be active.`);
+  }
+
+  // Check if event is already ended
+  if (event.eventEndedAt) {
+    throw new ApiErrorClass(400, 'Event has already been ended');
+  }
+
+  // Import Timestamp
+  const { Timestamp } = await import('firebase-admin/firestore');
+
+  // Update status to completed and set eventEndedAt
+  await eventRepo.update(req.params.id, { 
+    status: 'completed',
+    eventEndedAt: Timestamp.now()
+  });
+  const updatedEvent = await eventRepo.findById(req.params.id);
+
+  // Emit socket event to all clients in the event room
+  const io = (req.app as any).get('io');
+  if (io && updatedEvent) {
+    io.to(`event-${req.params.id}`).emit('event-ended', {
+      eventId: req.params.id,
+      event: updatedEvent,
+    });
+  }
+
+  res.json({
+    success: true,
+    data: updatedEvent,
+    message: 'Event has been ended successfully'
+  });
+}));
+
 // Set XP refresh schedule (cron expression) - protected route
 router.post('/:id/schedule', authMiddleware, asyncHandler(async (req: Request, res: Response) => {
   const { cronExpression } = req.body;

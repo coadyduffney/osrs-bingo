@@ -302,6 +302,16 @@ router.post(
       throw new ApiErrorClass(404, 'Task not found');
     }
 
+    // Check if event has ended
+    const event = await eventRepo.findById(task.eventId);
+    if (!event) {
+      throw new ApiErrorClass(404, 'Event not found');
+    }
+
+    if (event.eventEndedAt) {
+      throw new ApiErrorClass(400, 'Cannot complete tasks - this event has ended');
+    }
+
     const { teamId, verificationImageUrl, verificationImagePath, verificationNote } = req.body;
     if (!teamId) {
       throw new ApiErrorClass(400, 'Team ID required');

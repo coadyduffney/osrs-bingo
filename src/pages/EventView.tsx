@@ -88,6 +88,7 @@ function EventView() {
   const [addingAdmin, setAddingAdmin] = useState(false);
   const [removingAdminId, setRemovingAdminId] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [ending, setEnding] = useState(false);
   const [showCompleteTaskModal, setShowCompleteTaskModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [fireworksTrigger, setFireworksTrigger] = useState(0);
@@ -410,8 +411,20 @@ function EventView() {
       }
     };
 
+    const handleEventEnded = (data: { eventId: string; event: Event }) => {
+      if (data.eventId === id) {
+        setEvent(data.event);
+        setSnackbar({
+          open: true,
+          message: '🏁 This event has ended. No more tiles can be completed.',
+          color: 'warning',
+        });
+      }
+    };
+
     socket.on('admin-added', handleAdminAdded);
     socket.on('admin-removed', handleAdminRemoved);
+    socket.on('event-ended', handleEventEnded);
 
     // Cleanup
     return () => {
@@ -420,6 +433,7 @@ function EventView() {
       socket.off('xp-snapshots-refreshed', handleXpSnapshotsRefreshed);
       socket.off('admin-added', handleAdminAdded);
       socket.off('admin-removed', handleAdminRemoved);
+      socket.off('event-ended', handleEventEnded);
       leaveEvent(id);
     };
   }, [id, socket, joinEvent, leaveEvent, teams]);
@@ -625,6 +639,35 @@ function EventView() {
     }
   };
 
+  const handleEndEvent = async () => {
+    if (!id || !event) return;
+
+    if (!confirm('Are you sure you want to end this event? This will prevent any further tile completions.')) {
+      return;
+    }
+
+    try {
+      setEnding(true);
+      const response = await eventsApi.end(id);
+      if (response.success) {
+        setEvent(response.data);
+        setSnackbar({
+          open: true,
+          message: 'Event has been ended successfully',
+          color: 'success',
+        });
+      }
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err instanceof Error ? err.message : 'Failed to end event',
+        color: 'danger',
+      });
+    } finally {
+      setEnding(false);
+    }
+  };
+
   const handleStartTracking = async () => {
     if (!id) return;
 
@@ -794,6 +837,13 @@ function EventView() {
 
   const handleCompleteTask = async () => {
     if (!selectedTask || !event) return;
+
+    // Check if event has ended
+    if (event.eventEndedAt) {
+      setError('Cannot complete tasks - this event has ended');
+      setShowCompleteTaskModal(false);
+      return;
+    }
 
     // Find user's team
     const userTeam = teams.find(
@@ -997,6 +1047,18 @@ function EventView() {
         </Alert>
       )}
 
+      {/* Event Ended Alert */}
+      {event.eventEndedAt && (
+        <Alert color="warning" variant="soft" sx={{ mb: 3 }}>
+          <Stack spacing={0.5}>
+            <Typography level="title-md">🏁 Event Ended</Typography>
+            <Typography level="body-sm">
+              This event ended on {new Date(event.eventEndedAt).toLocaleString()}. No more tiles can be completed.
+            </Typography>
+          </Stack>
+        </Alert>
+      )}
+
       {/* Event Header */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
@@ -1081,6 +1143,17 @@ function EventView() {
                       </Button>
                     </>
                   )}
+                  {event.status === 'active' && !event.eventEndedAt && (
+                    <Button
+                      color="danger"
+                      variant="solid"
+                      size="sm"
+                      onClick={handleEndEvent}
+                      loading={ending}
+                    >
+                      End Event
+                    </Button>
+                  )}
                   {event.status === 'active' && !event.trackingEnabled && event.refreshSchedule && (
                     <Button
                       color="neutral"
@@ -1124,6 +1197,11 @@ function EventView() {
             <Chip variant="outlined" startDecorator="📋">
               {tasks.length} {tasks.length === 1 ? 'Task' : 'Tasks'}
             </Chip>
+            {event.eventEndedAt && (
+              <Chip variant="soft" color="primary" startDecorator="🏁">
+                Ended: {new Date(event.eventEndedAt).toLocaleString()}
+              </Chip>
+            )}
           </Stack>
 
           {/* Draft Event Notice */}

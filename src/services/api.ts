@@ -260,6 +260,9 @@ export const eventsApi = {
   publish: (id: string) =>
     apiClient.post<ApiResponse<Event>>(`/api/events/${id}/publish`, {}),
 
+  end: (id: string) =>
+    apiClient.post<ApiResponse<Event>>(`/api/events/${id}/end`, {}),
+
   setSchedule: (id: string, cronExpression: string | null) =>
     apiClient.post<ApiResponse<Event>>(`/api/events/${id}/schedule`, { cronExpression }),
 

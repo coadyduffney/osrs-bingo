@@ -11,7 +11,8 @@
     "lint": "eslint src --ext ts",
     "seed": "tsx src/scripts/seedData.ts",
     "create-baseline": "tsx src/scripts/createBaselineSnapshot.ts",
-    "update-player": "tsx src/scripts/updatePlayer.ts"
+    "update-player": "tsx src/scripts/updatePlayer.ts",
+    "user-completions": "tsx src/scripts/getUserCompletions.ts"
   },
   "keywords": [
     "osrs",
